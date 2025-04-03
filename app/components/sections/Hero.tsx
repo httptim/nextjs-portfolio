@@ -13,7 +13,7 @@ export default function Hero() {
   const [displayText, setDisplayText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [loopNum, setLoopNum] = useState(0);
-  const [typingSpeed, setTypingSpeed] = useState(150);
+  const [typingSpeed, setTypingSpeed] = useState(100);
   
   // List of phrases to cycle through
   const phrases = [
@@ -62,7 +62,7 @@ export default function Hero() {
     };
   };
 
-  // Typing animation effect
+  // Typing animation effect with no long pauses
   useEffect(() => {
     const currentPhrase = phrases[loopNum % phrases.length];
     
@@ -73,15 +73,12 @@ export default function Hero() {
         
         // If we've completed typing the current phrase
         if (displayText === currentPhrase) {
-          // Wait a bit before starting to delete
-          setTypingSpeed(2000);
-          setTimeout(() => {
-            setIsDeleting(true);
-            setTypingSpeed(75); // Faster when deleting
-          }, 2000);
+          // Start deleting immediately with no long pause
+          setIsDeleting(true);
+          setTypingSpeed(50); // Faster when deleting
         } else {
           // Normal typing speed with slight variation
-          setTypingSpeed(100 + Math.random() * 50);
+          setTypingSpeed(50 + Math.random() * 30);
         }
       } else {
         // Backspacing
@@ -91,10 +88,10 @@ export default function Hero() {
         if (displayText === '') {
           setIsDeleting(false);
           setLoopNum(loopNum + 1);
-          setTypingSpeed(150); // Reset typing speed
+          setTypingSpeed(100); // Reset typing speed
         } else {
           // Faster when deleting with slight variation
-          setTypingSpeed(50 + Math.random() * 25);
+          setTypingSpeed(30 + Math.random() * 20);
         }
       }
     }, typingSpeed);
@@ -139,6 +136,12 @@ export default function Hero() {
             className="px-8 py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-md font-medium transition-colors"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.98 }}
+            onClick={() => {
+              const projectsSection = document.getElementById('projects');
+              if (projectsSection) {
+                projectsSection.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
           >
             View My Work
           </motion.button>
@@ -147,6 +150,12 @@ export default function Hero() {
             className="px-8 py-3 border border-slate-600 hover:border-sky-400 hover:text-sky-400 rounded-md font-medium transition-colors"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.98 }}
+            onClick={() => {
+              const contactSection = document.getElementById('contact');
+              if (contactSection) {
+                contactSection.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
           >
             Contact Me
           </motion.button>

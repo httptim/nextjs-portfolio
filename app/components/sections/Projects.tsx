@@ -19,7 +19,7 @@ interface Project {
 }
 
 // Sample project data
-const projects: Project[] = [
+const projectsData: Project[] = [
   {
     id: 'project1',
     title: 'E-Commerce Platform',
@@ -67,8 +67,8 @@ const projects: Project[] = [
 ];
 
 export default function Projects() {
-  const [filter, setFilter] = useState<string>('all');
-  const [filteredProjects, setFilteredProjects] = useState<Project[]>(projects);
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [displayedProjects, setDisplayedProjects] = useState<Project[]>(projectsData);
   
   const controls = useAnimation();
   const [ref, inView] = useInView({
@@ -76,20 +76,24 @@ export default function Projects() {
     threshold: 0.1,
   });
 
+  // Handle animation start when component is in view
   useEffect(() => {
     if (inView) {
       controls.start('visible');
     }
   }, [controls, inView]);
 
-  // Fixed the filtering logic to ensure it always works correctly
-  useEffect(() => {
-    if (filter === 'all') {
-      setFilteredProjects([...projects]); // Create a new array to ensure state update
+  // Filter projects when activeFilter changes
+  const handleFilterChange = (filterName: string) => {
+    setActiveFilter(filterName);
+    
+    if (filterName === 'all') {
+      setDisplayedProjects(projectsData);
     } else {
-      setFilteredProjects(projects.filter(project => project.category === filter));
+      const filtered = projectsData.filter(project => project.category === filterName);
+      setDisplayedProjects(filtered);
     }
-  }, [filter]);
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -130,9 +134,9 @@ export default function Projects() {
             {['all', 'frontend', 'backend', 'fullstack', 'mobile'].map((category) => (
               <button
                 key={category}
-                onClick={() => setFilter(category)}
+                onClick={() => handleFilterChange(category)}
                 className={`px-4 py-2 rounded-full text-sm transition-colors ${
-                  filter === category
+                  activeFilter === category
                     ? 'bg-sky-500 text-white'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                 }`}
@@ -143,17 +147,25 @@ export default function Projects() {
           </div>
         </motion.div>
 
-        <motion.div 
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-          variants={containerVariants}
-        >
-          {filteredProjects.length > 0 ? (
-            filteredProjects.map((project) => (
+        {displayedProjects.length === 0 ? (
+          <motion.div 
+            variants={itemVariants}
+            className="text-center py-10"
+          >
+            <p className="text-slate-300">No projects found matching this filter.</p>
+          </motion.div>
+        ) : (
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+            variants={containerVariants}
+          >
+            {displayedProjects.map((project) => (
               <motion.div
                 key={project.id}
                 className="bg-slate-800 rounded-xl overflow-hidden shadow-lg hover:shadow-sky-900/20 transition-shadow"
                 variants={itemVariants}
                 whileHover={{ y: -5 }}
+                layout
               >
                 <div className="h-48 bg-slate-700 relative">
                   {/* This would be a project image */}
@@ -204,13 +216,9 @@ export default function Projects() {
                   </div>
                 </div>
               </motion.div>
-            ))
-          ) : (
-            <div className="col-span-full text-center py-10">
-              <p className="text-slate-300">No projects found for this category.</p>
-            </div>
-          )}
-        </motion.div>
+            ))}
+          </motion.div>
+        )}
       </motion.div>
     </div>
   );
