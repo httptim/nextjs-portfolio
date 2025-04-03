@@ -1,13 +1,28 @@
 // app/components/sections/Hero.tsx
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useMousePosition } from '../../hooks/useMousePosition';
 
 export default function Hero() {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const mousePosition = useMousePosition();
+  
+  // Typing animation states
+  const [displayText, setDisplayText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [loopNum, setLoopNum] = useState(0);
+  const [typingSpeed, setTypingSpeed] = useState(150);
+  
+  // List of phrases to cycle through
+  const phrases = [
+    "Full Stack Developer",
+    "UI/UX Designer",
+    "Mobile App Developer",
+    "Web Architect",
+    "Problem Solver"
+  ];
   
   // Animation variants
   const containerVariants = {
@@ -47,6 +62,46 @@ export default function Hero() {
     };
   };
 
+  // Typing animation effect
+  useEffect(() => {
+    const currentPhrase = phrases[loopNum % phrases.length];
+    
+    const timer = setTimeout(() => {
+      if (!isDeleting) {
+        // Typing forward
+        setDisplayText(currentPhrase.substring(0, displayText.length + 1));
+        
+        // If we've completed typing the current phrase
+        if (displayText === currentPhrase) {
+          // Wait a bit before starting to delete
+          setTypingSpeed(2000);
+          setTimeout(() => {
+            setIsDeleting(true);
+            setTypingSpeed(75); // Faster when deleting
+          }, 2000);
+        } else {
+          // Normal typing speed with slight variation
+          setTypingSpeed(100 + Math.random() * 50);
+        }
+      } else {
+        // Backspacing
+        setDisplayText(currentPhrase.substring(0, displayText.length - 1));
+        
+        // If we've completely deleted the current phrase
+        if (displayText === '') {
+          setIsDeleting(false);
+          setLoopNum(loopNum + 1);
+          setTypingSpeed(150); // Reset typing speed
+        } else {
+          // Faster when deleting with slight variation
+          setTypingSpeed(50 + Math.random() * 25);
+        }
+      }
+    }, typingSpeed);
+    
+    return () => clearTimeout(timer);
+  }, [displayText, isDeleting, loopNum, typingSpeed, phrases]);
+
   return (
     <div className="flex items-center justify-center h-screen relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-radial from-slate-800/30 to-transparent" />
@@ -68,9 +123,8 @@ export default function Hero() {
           style={calculateMouseEffect()}
         >
           <span className="text-white">I'm a </span>
-          <span className="text-sky-400">Full Stack</span>
-          <br />
-          <span className="text-white">Developer</span>
+          <span className="text-sky-400">{displayText}</span>
+          <span className="text-sky-400 animate-pulse">|</span>
         </motion.h1>
         
         <motion.p 

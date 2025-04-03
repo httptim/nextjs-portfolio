@@ -11,6 +11,8 @@ interface Particle {
   size: number;
   color: string;
   id: number;
+  vx: number; // Added velocity x
+  vy: number; // Added velocity y
 }
 
 interface ConnectionLine {
@@ -49,7 +51,7 @@ export default function Particles() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Generate particles
+  // Generate particles with initial velocities
   useEffect(() => {
     if (dimensions.width === 0 || dimensions.height === 0) return;
 
@@ -68,6 +70,8 @@ export default function Particles() {
         0.3 + Math.random() * 0.7
       })`,
       id: i,
+      vx: (Math.random() - 0.5) * 0.3, // Initial velocity X
+      vy: (Math.random() - 0.5) * 0.3, // Initial velocity Y
     }));
 
     setParticles(newParticles);
@@ -122,28 +126,51 @@ export default function Particles() {
     setConnections(newConnections);
   }, [particles, mousePosition]);
 
-  // Animation for particles
+  // Smooth animation for particles with physics-based movement
   useEffect(() => {
     if (particles.length === 0) return;
 
     const animateParticles = () => {
       setParticles((prevParticles) =>
         prevParticles.map((particle) => {
-          // Small random movement
-          const newX = particle.x + (Math.random() - 0.5) * 0.5;
-          const newY = particle.y + (Math.random() - 0.5) * 0.5;
-
-          // Ensure particles stay within bounds
+          // Move based on velocity
+          let newX = particle.x + particle.vx;
+          let newY = particle.y + particle.vy;
+          
+          // Bounce off walls
+          let newVx = particle.vx;
+          let newVy = particle.vy;
+          
+          if (newX <= 0 || newX >= dimensions.width) {
+            newVx = -particle.vx;
+            newX = newX <= 0 ? 0 : dimensions.width;
+          }
+          
+          if (newY <= 0 || newY >= dimensions.height) {
+            newVy = -particle.vy;
+            newY = newY <= 0 ? 0 : dimensions.height;
+          }
+          
+          // Add tiny random movement to prevent straight lines
+          newVx += (Math.random() - 0.5) * 0.01;
+          newVy += (Math.random() - 0.5) * 0.01;
+          
+          // Optional: dampen velocity slightly to prevent excessive speed
+          newVx *= 0.99;
+          newVy *= 0.99;
+          
           return {
             ...particle,
-            x: newX < 0 ? 0 : newX > dimensions.width ? dimensions.width : newX,
-            y: newY < 0 ? 0 : newY > dimensions.height ? dimensions.height : newY,
+            x: newX,
+            y: newY,
+            vx: newVx,
+            vy: newVy,
           };
         })
       );
     };
 
-    const interval = setInterval(animateParticles, 50);
+    const interval = setInterval(animateParticles, 30); // More frequent updates for smoother animation
     return () => clearInterval(interval);
   }, [particles, dimensions]);
 
