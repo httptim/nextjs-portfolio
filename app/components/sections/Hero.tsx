@@ -13,7 +13,7 @@ export default function Hero() {
   const [displayText, setDisplayText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [loopNum, setLoopNum] = useState(0);
-  const [typingSpeed, setTypingSpeed] = useState(100);
+  const [typingSpeed, setTypingSpeed] = useState(150); // Increased from 100
   
   // List of phrases to cycle through
   const phrases = [
@@ -62,36 +62,41 @@ export default function Hero() {
     };
   };
 
-  // Typing animation effect with no long pauses
+  // Typing animation effect with slower speeds
   useEffect(() => {
     const currentPhrase = phrases[loopNum % phrases.length];
     
     const timer = setTimeout(() => {
       if (!isDeleting) {
-        // Typing forward
+        // Typing forward - slower
         setDisplayText(currentPhrase.substring(0, displayText.length + 1));
         
         // If we've completed typing the current phrase
         if (displayText === currentPhrase) {
-          // Start deleting immediately with no long pause
-          setIsDeleting(true);
-          setTypingSpeed(50); // Faster when deleting
+          // Add a pause before deleting
+          setTimeout(() => {
+            setIsDeleting(true);
+            setTypingSpeed(100); // Deleting speed (increased from 50)
+          }, 1500); // Pause at the end of the phrase
         } else {
-          // Normal typing speed with slight variation
-          setTypingSpeed(50 + Math.random() * 30);
+          // Normal typing speed with slight variation (slowed down)
+          setTypingSpeed(100 + Math.random() * 50); // Increased from 50+30
         }
       } else {
-        // Backspacing
+        // Backspacing - also slower
         setDisplayText(currentPhrase.substring(0, displayText.length - 1));
         
         // If we've completely deleted the current phrase
         if (displayText === '') {
           setIsDeleting(false);
           setLoopNum(loopNum + 1);
-          setTypingSpeed(100); // Reset typing speed
+          setTypingSpeed(150); // Reset typing speed (increased from 100)
+          
+          // Add a pause before starting the next phrase
+          return setTimeout(() => {}, 500);
         } else {
-          // Faster when deleting with slight variation
-          setTypingSpeed(30 + Math.random() * 20);
+          // Deleting speed with slight variation (slowed down)
+          setTypingSpeed(80 + Math.random() * 40); // Increased from 30+20
         }
       }
     }, typingSpeed);

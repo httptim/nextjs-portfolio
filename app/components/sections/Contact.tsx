@@ -17,6 +17,15 @@ interface FormErrors {
   message?: string;
 }
 
+interface ContactSubmission {
+  id: string;
+  name: string;
+  email: string;
+  message: string;
+  date: string;
+  read: boolean;
+}
+
 export default function Contact() {
   const [formState, setFormState] = useState<FormState>({
     name: '',
@@ -90,6 +99,27 @@ export default function Contact() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const saveSubmissionToLocalStorage = (submission: ContactSubmission) => {
+    try {
+      // Get existing submissions
+      const existingSubmissionsJSON = localStorage.getItem('contactSubmissions');
+      const existingSubmissions: ContactSubmission[] = existingSubmissionsJSON 
+        ? JSON.parse(existingSubmissionsJSON) 
+        : [];
+      
+      // Add new submission
+      const updatedSubmissions = [submission, ...existingSubmissions];
+      
+      // Save back to localStorage
+      localStorage.setItem('contactSubmissions', JSON.stringify(updatedSubmissions));
+      
+      return true;
+    } catch (error) {
+      console.error('Error saving contact submission:', error);
+      return false;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -97,14 +127,33 @@ export default function Contact() {
     
     setIsSubmitting(true);
     
+    // Create submission object
+    const submission: ContactSubmission = {
+      id: Date.now().toString(),
+      name: formState.name,
+      email: formState.email,
+      message: formState.message,
+      date: new Date().toISOString(),
+      read: false,
+    };
+    
     // Simulate form submission
     try {
       // In a real app, this would be an API call
       await new Promise((resolve) => setTimeout(resolve, 1500));
-      setSubmitSuccess(true);
-      setFormState({ name: '', email: '', message: '' });
+      
+      // Save to localStorage for demo purposes
+      const saveSuccess = saveSubmissionToLocalStorage(submission);
+      
+      if (saveSuccess) {
+        setSubmitSuccess(true);
+        setFormState({ name: '', email: '', message: '' });
+      } else {
+        setSubmitSuccess(false);
+      }
     } catch (error) {
       setSubmitSuccess(false);
+      console.error('Error submitting form:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -212,6 +261,7 @@ export default function Contact() {
                     errors.name ? 'focus:ring-red-500 border border-red-500' : 'focus:ring-sky-500'
                   }`}
                   placeholder="Your name"
+                  required
                 />
                 {errors.name && (
                   <p className="mt-1 text-xs text-red-500">{errors.name}</p>
@@ -232,6 +282,7 @@ export default function Contact() {
                     errors.email ? 'focus:ring-red-500 border border-red-500' : 'focus:ring-sky-500'
                   }`}
                   placeholder="Your email"
+                  required
                 />
                 {errors.email && (
                   <p className="mt-1 text-xs text-red-500">{errors.email}</p>
@@ -252,6 +303,7 @@ export default function Contact() {
                     errors.message ? 'focus:ring-red-500 border border-red-500' : 'focus:ring-sky-500'
                   }`}
                   placeholder="Your message"
+                  required
                 />
                 {errors.message && (
                   <p className="mt-1 text-xs text-red-500">{errors.message}</p>
