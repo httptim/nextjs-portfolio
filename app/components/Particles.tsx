@@ -51,7 +51,7 @@ export default function Particles() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Generate particles with initial velocities
+  // Generate particles with increased initial velocities
   useEffect(() => {
     if (dimensions.width === 0 || dimensions.height === 0) return;
 
@@ -70,8 +70,8 @@ export default function Particles() {
         0.3 + Math.random() * 0.7
       })`,
       id: i,
-      vx: (Math.random() - 0.5) * 0.3, // Initial velocity X
-      vy: (Math.random() - 0.5) * 0.3, // Initial velocity Y
+      vx: (Math.random() - 0.5) * 1.2, // Increased initial velocity X (was 0.3)
+      vy: (Math.random() - 0.5) * 1.2, // Increased initial velocity Y (was 0.3)
     }));
 
     setParticles(newParticles);
@@ -137,27 +137,36 @@ export default function Particles() {
           let newX = particle.x + particle.vx;
           let newY = particle.y + particle.vy;
           
-          // Bounce off walls
+          // Bounce off walls with increased energy
           let newVx = particle.vx;
           let newVy = particle.vy;
           
           if (newX <= 0 || newX >= dimensions.width) {
-            newVx = -particle.vx;
+            newVx = -particle.vx * 1.05; // Slightly increase velocity on bounce (added energy)
             newX = newX <= 0 ? 0 : dimensions.width;
           }
           
           if (newY <= 0 || newY >= dimensions.height) {
-            newVy = -particle.vy;
+            newVy = -particle.vy * 1.05; // Slightly increase velocity on bounce (added energy)
             newY = newY <= 0 ? 0 : dimensions.height;
           }
           
-          // Add tiny random movement to prevent straight lines
-          newVx += (Math.random() - 0.5) * 0.01;
-          newVy += (Math.random() - 0.5) * 0.01;
+          // Add more significant random movement
+          newVx += (Math.random() - 0.5) * 0.05; // Increased from 0.01
+          newVy += (Math.random() - 0.5) * 0.05; // Increased from 0.01
           
-          // Optional: dampen velocity slightly to prevent excessive speed
-          newVx *= 0.99;
-          newVy *= 0.99;
+          // Optional: less dampening to maintain higher speeds
+          newVx *= 0.995; // Less dampening (was 0.99)
+          newVy *= 0.995; // Less dampening (was 0.99)
+          
+          // Cap velocity to prevent extreme speeds
+          const maxVelocity = 2.5;
+          if (Math.abs(newVx) > maxVelocity) {
+            newVx = maxVelocity * Math.sign(newVx);
+          }
+          if (Math.abs(newVy) > maxVelocity) {
+            newVy = maxVelocity * Math.sign(newVy);
+          }
           
           return {
             ...particle,
@@ -170,7 +179,7 @@ export default function Particles() {
       );
     };
 
-    const interval = setInterval(animateParticles, 30); // More frequent updates for smoother animation
+    const interval = setInterval(animateParticles, 16); // More frequent updates (was 30ms)
     return () => clearInterval(interval);
   }, [particles, dimensions]);
 
