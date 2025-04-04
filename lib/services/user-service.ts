@@ -1,42 +1,127 @@
-import { hash } from 'bcryptjs';
+// lib/services/user-service.ts
+import { hash } from 'bcryptjs'; // Changed from bcrypt to bcryptjs
 import { prisma } from '../prisma';
-import { z } from 'zod';
+import { Role, User } from '@prisma/client';
 
-const UserSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-  name: z.string().min(2),
-  company: z.string().optional(),
-  phone: z.string().optional(),
-  role: z.enum(['ADMIN', 'CUSTOMER']),
-});
+export interface CreateUserInput {
+  email: string;
+  password: string;
+  name: string;
+  role?: Role;
+  company?: string;
+  phone?: string;
+}
+
+export interface UpdateUserInput {
+  name?: string;
+  company?: string;
+  phone?: string;
+  role?: Role;
+}
+
+export interface UserSummary {
+  id: string;
+  email: string;
+  name: string;
+  role: Role;
+  company?: string | null;
+  phone?: string | null;
+  createdAt: Date;
+}
 
 export class UserService {
-  static async createUser(userData: z.infer<typeof UserSchema>) {
-    // Validate input data
-    const validatedData = UserSchema.parse(userData);
-
+  /**
+   * Create a new user
+   */
+  static async createUser(input: CreateUserInput): Promise<UserSummary> {
+    const { email, password, name, role = 'CUSTOMER', company, phone } = input;
+    
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email: validatedData.email },
+      where: { email },
     });
-
+    
     if (existingUser) {
-      throw new Error('User already exists');
+      throw new Error('User with this email already exists');
     }
-
-    // Hash password
-    const hashedPassword = await hash(validatedData.password, 10);
-
-    // Create user
+    
+    // Hash the password
+    const hashedPassword = await hash(password, 10);
+    
+    // Create the user
     const user = await prisma.user.create({
       data: {
-        ...validatedData,
+        email,
+        name,
         password: hashedPassword,
+        role,
+        company,
+        phone,
       },
     });
-
-    // Return user without password
+    
+    return this.sanitizeUser(user);
+  }
+  
+  /**
+   * Get a user by ID
+   */
+  static async getUserById(id: string): Promise<UserSummary | null> {
+    const user = await prisma.user.findUnique({
+      where: { id },
+    });
+    
+    if (!user) {
+      return null;
+    }
+    
+    return this.sanitizeUser(user);
+  }
+  
+  /**
+   * Get a user by email
+   */
+  static async getUserByEmail(email: string): Promise<UserSummary | null> {
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+    
+    if (!user) {
+      return null;
+    }
+    
+    return this.sanitizeUser(user);
+  }
+  
+  /**
+   * Update a user
+   */
+  static async updateUser(id: string, input: UpdateUserInput): Promise<UserSummary> {
+    const user = await prisma.user.update({
+      where: { id },
+      data: input,
+    });
+    
+    return this.sanitizeUser(user);
+  }
+  
+  /**
+   * Get all customers (users with CUSTOMER role)
+   */
+  static async getCustomers(): Promise<UserSummary[]> {
+    const customers = await prisma.user.findMany({
+      where: { role: 'CUSTOMER' },
+      orderBy: { name: 'asc' },
+    });
+    
+    return customers.map(customer => this.sanitizeUser(customer));
+  }
+  
+  /**
+   * Remove sensitive info from user object
+   */
+  static sanitizeUser(user: User): UserSummary {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = user;
     return userWithoutPassword;
   }
