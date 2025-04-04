@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 
 export default function LoginForm() {
   const [email, setEmail] = useState('');
@@ -15,6 +15,20 @@ export default function LoginForm() {
   
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
+  
+  // Handle automatic redirect when session changes
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user) {
+      console.log('Session authenticated:', session);
+      // Check role and redirect accordingly
+      if (session.user.role === 'ADMIN') {
+        router.push('/dashboard/admin');
+      } else {
+        router.push('/dashboard/customer');
+      }
+    }
+  }, [session, status, router]);
   
   // Handle query parameters
   useEffect(() => {
@@ -50,8 +64,6 @@ export default function LoginForm() {
     setIsLoading(true);
 
     try {
-      const callbackUrl = searchParams.get('callbackUrl') || '/';
-      
       const result = await signIn('credentials', {
         redirect: false,
         email,
@@ -61,22 +73,10 @@ export default function LoginForm() {
       if (!result?.ok) {
         throw new Error(result?.error || 'Login failed. Please check your credentials.');
       }
-
-      // Get the user's role from the session and redirect accordingly
-      try {
-        const response = await fetch('/api/auth/session');
-        const session = await response.json();
-        
-        if (session?.user?.role === 'ADMIN') {
-          router.push('/dashboard/admin');
-        } else {
-          router.push('/dashboard/customer');
-        }
-      } catch (sessionError) {
-        console.error('Error fetching session:', sessionError);
-        // Default fallback if session fetch fails
-        router.push('/dashboard/customer');
-      }
+      
+      // No need to redirect here - the useSession effect will handle it
+      // Just wait for the session to update
+      
     } catch (err) {
       console.error('Login error:', err);
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.');

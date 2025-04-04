@@ -23,11 +23,14 @@ export default function AuthErrorContent() {
         case 'AccessDenied':
           setErrorMessage('You do not have permission to access this resource.');
           break;
+        case 'SessionRequired':
+          setErrorMessage('You need to be signed in to access this page.');
+          break;
         default:
           setErrorMessage(`An error occurred: ${error}`);
       }
     } else {
-      setErrorMessage('An unknown error occurred');
+      setErrorMessage('An unknown error occurred during authentication');
     }
   }, [searchParams]);
 

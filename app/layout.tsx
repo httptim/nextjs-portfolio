@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ClaudeChat from "./components/ClaudeChat";
+import AuthProvider from "./providers/auth-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,8 +29,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-900 text-slate-100`}>
-        {children}
-        <ClaudeChat />
+        <AuthProvider>
+          {children}
+          <ClaudeChat />
+        </AuthProvider>
       </body>
     </html>
   );
