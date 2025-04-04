@@ -29,6 +29,7 @@ model User {
   contactMessages ContactMessage[]
   invoices        Invoice[]
   payments        Payment[]
+  testimonials    Testimonial[]     // Added relation to testimonials
 }
 
 enum Role {
@@ -219,4 +220,19 @@ model File {
   projectId   String?
   taskId      String?
   createdAt   DateTime @default(now())
+}
+
+// New Testimonial model
+model Testimonial {
+  id        String   @id @default(cuid())
+  content   String
+  rating    Int      @default(5) // Rating from 1-5
+  clientId  String
+  client    User     @relation(fields: [clientId], references: [id])
+  position  String?  // Client's position/job title
+  company   String?  // Client's company
+  isActive  Boolean  @default(true) // Whether to display on the site
+  order     Int      @default(0)    // Display order
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

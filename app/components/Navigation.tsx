@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { signOut, useSession } from 'next-auth/react'; // Import useSession and signOut
 
 interface NavigationProps {
   sections: { id: string; label: string }[];
@@ -11,18 +12,8 @@ interface NavigationProps {
 }
 
 export default function Navigation({ sections, activeSection }: NavigationProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const { data: session } = useSession(); // Use the session from NextAuth
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    // Check if user is logged in
-    const role = localStorage.getItem('userRole');
-    if (role) {
-      setIsAuthenticated(true);
-      setUserRole(role);
-    }
-  }, []);
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -31,14 +22,14 @@ export default function Navigation({ sections, activeSection }: NavigationProps)
     }
   };
 
-  const handleLogout = () => {
-    // Clear auth data
+  const handleLogout = async () => {
+    // Use NextAuth's signOut function to properly clear the session
+    await signOut({ redirect: false });
+    
+    // Also clear localStorage for backward compatibility
     localStorage.removeItem('userRole');
     localStorage.removeItem('userName');
     localStorage.removeItem('userEmail');
-    
-    setIsAuthenticated(false);
-    setUserRole(null);
     
     // Redirect to home page
     window.location.href = '/';
@@ -98,10 +89,10 @@ export default function Navigation({ sections, activeSection }: NavigationProps)
           </motion.ul>
           
           <div className="flex items-center space-x-3">
-            {isAuthenticated ? (
+            {session ? (
               <div className="flex items-center space-x-3">
                 <Link 
-                  href={userRole === 'admin' ? '/dashboard/admin' : '/dashboard/customer'}
+                  href={session.user.role === 'ADMIN' ? '/dashboard/admin' : '/dashboard/customer'}
                   className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-md font-medium transition-colors"
                 >
                   Dashboard
@@ -191,10 +182,10 @@ export default function Navigation({ sections, activeSection }: NavigationProps)
             ))}
             
             <div className="mt-3 border-t border-slate-700 pt-3 px-4 space-y-2">
-              {isAuthenticated ? (
+              {session ? (
                 <>
                   <Link 
-                    href={userRole === 'admin' ? '/dashboard/admin' : '/dashboard/customer'}
+                    href={session.user.role === 'ADMIN' ? '/dashboard/admin' : '/dashboard/customer'}
                     className="block w-full py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-md font-medium transition-colors text-center"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
