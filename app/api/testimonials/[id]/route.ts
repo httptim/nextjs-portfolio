@@ -4,18 +4,12 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/prisma';
 
-interface RouteSegmentProps {
-  params: {
-    id: string;
-  };
-}
-
 export async function GET(
   request: NextRequest,
-  props: RouteSegmentProps
+  { params }: { params: { id: string } }
 ) {
   try {
-    const id = props.params.id;
+    const id = params.id;
     
     // Get the testimonial
     const testimonial = await prisma.testimonial.findUnique({
@@ -76,7 +70,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  props: RouteSegmentProps
+  { params }: { params: { id: string } }
 ) {
   try {
     // Verify that the user is authenticated and is an admin
@@ -96,7 +90,7 @@ export async function PUT(
       );
     }
     
-    const id = props.params.id;
+    const id = params.id;
     
     // Check if the testimonial exists
     const existingTestimonial = await prisma.testimonial.findUnique({
@@ -171,7 +165,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  props: RouteSegmentProps
+  { params }: { params: { id: string } }
 ) {
   try {
     // Verify that the user is authenticated and is an admin
@@ -191,7 +185,7 @@ export async function DELETE(
       );
     }
     
-    const id = props.params.id;
+    const id = params.id;
     
     // Check if the testimonial exists
     const existingTestimonial = await prisma.testimonial.findUnique({
