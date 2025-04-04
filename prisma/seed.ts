@@ -6,6 +6,64 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log('Starting database seeding...');
+
+  // Add this to the main function in prisma/seed.ts
+  // Create demo testimonials if none exist
+  const existingTestimonials = await prisma.testimonial.count();
+  
+  if (existingTestimonials === 0) {
+    console.log('Creating demo testimonials...');
+    
+    // Get the customer IDs (users with CUSTOMER role)
+    const customers = await prisma.user.findMany({
+      where: {
+        role: Role.CUSTOMER,
+      },
+      select: {
+        id: true,
+      },
+    });
+    
+    if (customers.length > 0) {
+      await prisma.testimonial.createMany({
+        data: [
+          {
+            content: "Working with this developer was a fantastic experience! They delivered high-quality code on time and were very responsive to our feedback. I would highly recommend them for any web development project.",
+            rating: 5,
+            clientId: customers[0].id,
+            position: "Project Manager",
+            company: "Tech Solutions Inc.",
+            isActive: true,
+            order: 1,
+          },
+          {
+            content: "The website they developed for our business exceeded our expectations. Not only does it look amazing, but it's also fast, responsive, and user-friendly. We've received many compliments from our customers.",
+            rating: 5,
+            clientId: customers[0].id,
+            position: "CEO",
+            company: "Digital Marketing Pro",
+            isActive: true,
+            order: 2,
+          },
+          {
+            content: "I appreciated the developer's attention to detail and their ability to translate our requirements into a functional and beautiful website. They were patient with our changes and always delivered high-quality work.",
+            rating: 4,
+            clientId: customers[0].id,
+            position: "Marketing Director",
+            company: "Global Designs",
+            isActive: true,
+            order: 3,
+          },
+        ],
+      });
+      
+      console.log('Demo testimonials created successfully.');
+    } else {
+      console.log('No customers found for creating testimonials.');
+    }
+  } else {
+    console.log('Testimonials already exist.');
+  }
   
   // Create admin user if it doesn't exist
   const adminEmail = 'admin@example.com';

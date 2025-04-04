@@ -1,4 +1,4 @@
-// app/page.tsx
+// app/page.tsx - Add Testimonials to the import and to the main component
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
@@ -10,6 +10,7 @@ import About from './components/sections/About';
 import Projects from './components/sections/Projects';
 import FutureProjects from './components/sections/FutureProjects';
 import PersonalProjects from './components/sections/PersonalProjects';
+import Testimonials from './components/sections/Testimonials'; // Add this import
 import Contact from './components/sections/Contact';
 import Footer from './components/Footer';
 import Navigation from './components/Navigation';
@@ -24,12 +25,14 @@ export default function Home() {
 
   const opacity = useTransform(scrollYProgress, [0, 0.2], [0, 1]);
 
+  // Update sections to include testimonials
   const sections = [
     { id: 'hero', label: 'Home' },
     { id: 'about', label: 'About' },
     { id: 'projects', label: 'Projects' },
     { id: 'future-projects', label: 'Future Work' },
     { id: 'personal-projects', label: 'Personal' },
+    { id: 'testimonials', label: 'Testimonials' }, // Add testimonials section
     { id: 'contact', label: 'Contact' }
   ];
 
@@ -99,6 +102,11 @@ export default function Home() {
 
           <section id="personal-projects" className="min-h-screen py-20">
             <PersonalProjects />
+          </section>
+          
+          {/* Add Testimonials section */}
+          <section id="testimonials" className="min-h-screen py-20">
+            <Testimonials />
           </section>
 
           <section id="contact" className="min-h-screen py-20">

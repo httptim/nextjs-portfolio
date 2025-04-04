@@ -1,4 +1,4 @@
-// app/dashboard/admin/page.tsx
+// app/dashboard/admin/page.tsx (updated with real data)
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,70 +7,109 @@ import { motion } from 'framer-motion';
 interface DashboardStats {
   totalCustomers: number;
   activeProjects: number;
+  completedProjects: number;
   tasksCompleted: number;
   pendingTasks: number;
   openInquiries: number;
   monthlyRevenue: number;
 }
 
-// Mock data for recent activities
-const recentActivities = [
-  {
-    id: 1,
-    action: 'New task added',
-    project: 'E-Commerce Website',
-    customer: 'John Smith',
-    time: '2 hours ago',
-  },
-  {
-    id: 2,
-    action: 'Message received',
-    project: 'Mobile App',
-    customer: 'Emma Johnson',
-    time: '5 hours ago',
-  },
-  {
-    id: 3,
-    action: 'Payment received',
-    project: 'CRM System',
-    customer: 'Michael Brown',
-    time: '1 day ago',
-  },
-  {
-    id: 4,
-    action: 'Project milestone completed',
-    project: 'Dashboard UI',
-    customer: 'Sarah Wilson',
-    time: '2 days ago',
-  },
-];
+interface Activity {
+  id: string;
+  type: 'task' | 'message' | 'payment' | 'project' | 'invoice';
+  action: string;
+  project: string | null;
+  customer: string | null;
+  timestamp: string;
+}
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalCustomers: 0,
-    activeProjects: 0,
-    tasksCompleted: 0,
-    pendingTasks: 0,
-    openInquiries: 0,
-    monthlyRevenue: 0,
-  });
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Simulating data loading
+  // Fetch dashboard data on mount
   useEffect(() => {
-    // In a real app, this would be an API call
-    const loadStats = () => {
-      setStats({
-        totalCustomers: 15,
-        activeProjects: 8,
-        tasksCompleted: 142,
-        pendingTasks: 37,
-        openInquiries: 5,
-        monthlyRevenue: 12500,
-      });
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      try {
+        // Fetch stats
+        const statsResponse = await fetch('/api/dashboard/admin/stats');
+        if (!statsResponse.ok) {
+          throw new Error('Failed to fetch dashboard stats');
+        }
+        const statsData = await statsResponse.json();
+        
+        // Fetch activities
+        const activitiesResponse = await fetch('/api/dashboard/admin/activities');
+        if (!activitiesResponse.ok) {
+          throw new Error('Failed to fetch recent activities');
+        }
+        const activitiesData = await activitiesResponse.json();
+        
+        setStats(statsData.stats);
+        setActivities(activitiesData.activities);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        setError('Failed to load dashboard data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
     };
-
-    loadStats();
+    
+    fetchDashboardData();
   }, []);
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffMinutes < 60) {
+      return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
+    } else if (diffHours < 24) {
+      return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    } else if (diffDays < 7) {
+      return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    } else {
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sky-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+          <div className="bg-red-500/20 text-red-500 p-4 rounded-md">
+            {error}
+            <button 
+              className="ml-2 underline"
+              onClick={() => window.location.reload()}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="py-6">
@@ -99,7 +138,7 @@ export default function AdminDashboard() {
                   <dl>
                     <dt className="text-sm font-medium text-slate-400 truncate">Total Customers</dt>
                     <dd>
-                      <div className="text-lg font-medium text-white">{stats.totalCustomers}</div>
+                      <div className="text-lg font-medium text-white">{stats?.totalCustomers || 0}</div>
                     </dd>
                   </dl>
                 </div>
@@ -124,7 +163,7 @@ export default function AdminDashboard() {
                   <dl>
                     <dt className="text-sm font-medium text-slate-400 truncate">Active Projects</dt>
                     <dd>
-                      <div className="text-lg font-medium text-white">{stats.activeProjects}</div>
+                      <div className="text-lg font-medium text-white">{stats?.activeProjects || 0}</div>
                     </dd>
                   </dl>
                 </div>
@@ -149,7 +188,7 @@ export default function AdminDashboard() {
                   <dl>
                     <dt className="text-sm font-medium text-slate-400 truncate">Completed Tasks</dt>
                     <dd>
-                      <div className="text-lg font-medium text-white">{stats.tasksCompleted}</div>
+                      <div className="text-lg font-medium text-white">{stats?.tasksCompleted || 0}</div>
                     </dd>
                   </dl>
                 </div>
@@ -174,7 +213,7 @@ export default function AdminDashboard() {
                   <dl>
                     <dt className="text-sm font-medium text-slate-400 truncate">Pending Tasks</dt>
                     <dd>
-                      <div className="text-lg font-medium text-white">{stats.pendingTasks}</div>
+                      <div className="text-lg font-medium text-white">{stats?.pendingTasks || 0}</div>
                     </dd>
                   </dl>
                 </div>
@@ -199,7 +238,7 @@ export default function AdminDashboard() {
                   <dl>
                     <dt className="text-sm font-medium text-slate-400 truncate">Open Inquiries</dt>
                     <dd>
-                      <div className="text-lg font-medium text-white">{stats.openInquiries}</div>
+                      <div className="text-lg font-medium text-white">{stats?.openInquiries || 0}</div>
                     </dd>
                   </dl>
                 </div>
@@ -224,7 +263,7 @@ export default function AdminDashboard() {
                   <dl>
                     <dt className="text-sm font-medium text-slate-400 truncate">Monthly Revenue</dt>
                     <dd>
-                      <div className="text-lg font-medium text-white">${stats.monthlyRevenue.toLocaleString()}</div>
+                      <div className="text-lg font-medium text-white">${stats?.monthlyRevenue.toFixed(2) || '0.00'}</div>
                     </dd>
                   </dl>
                 </div>
@@ -238,29 +277,41 @@ export default function AdminDashboard() {
           <h2 className="text-lg font-medium text-white">Recent Activity</h2>
           <div className="mt-4 bg-slate-800 shadow overflow-hidden rounded-lg">
             <ul className="divide-y divide-slate-700">
-              {recentActivities.map((activity) => (
-                <motion.li
-                  key={activity.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.1 * activity.id }}
-                  className="px-6 py-4"
-                >
-                  <div className="flex items-center">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-white truncate">{activity.action}</p>
-                      <div className="flex text-xs text-slate-400">
-                        <p>Project: {activity.project}</p>
-                        <span className="mx-1">•</span>
-                        <p>Client: {activity.customer}</p>
+              {activities.length === 0 ? (
+                <li className="px-6 py-4 text-center text-slate-400">
+                  No recent activities.
+                </li>
+              ) : (
+                activities.map((activity) => (
+                  <motion.li
+                    key={activity.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="px-6 py-4"
+                  >
+                    <div className="flex items-center">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-white truncate">{activity.action}</p>
+                        <div className="flex text-xs text-slate-400">
+                          {activity.project && (
+                            <>
+                              <p>Project: {activity.project}</p>
+                              <span className="mx-1">•</span>
+                            </>
+                          )}
+                          {activity.customer && (
+                            <p>Client: {activity.customer}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="ml-4 flex-shrink-0">
+                        <p className="text-xs text-slate-400">{formatDate(activity.timestamp)}</p>
                       </div>
                     </div>
-                    <div className="ml-4 flex-shrink-0">
-                      <p className="text-xs text-slate-400">{activity.time}</p>
-                    </div>
-                  </div>
-                </motion.li>
-              ))}
+                  </motion.li>
+                ))
+              )}
             </ul>
             <div className="bg-slate-700 px-6 py-3">
               <div className="text-sm">
@@ -275,4 +326,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
