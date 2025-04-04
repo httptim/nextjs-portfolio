@@ -12,6 +12,7 @@ export default function LoginForm() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [isRedirecting, setIsRedirecting] = useState(false);
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -19,16 +20,23 @@ export default function LoginForm() {
   
   // Handle automatic redirect when session changes
   useEffect(() => {
-    if (status === 'authenticated' && session?.user) {
+    // Only redirect if we're not already in the process of redirecting
+    // This helps prevent redirection loops
+    if (status === 'authenticated' && session?.user && !isRedirecting) {
       console.log('Session authenticated:', session);
-      // Check role and redirect accordingly
-      if (session.user.role === 'ADMIN') {
-        router.push('/dashboard/admin');
-      } else {
-        router.push('/dashboard/customer');
-      }
+      setIsRedirecting(true);
+      
+      // Add slight delay to ensure session is fully established
+      setTimeout(() => {
+        // Check role and redirect accordingly
+        if (session.user.role === 'ADMIN') {
+          router.push('/dashboard/admin');
+        } else {
+          router.push('/dashboard/customer');
+        }
+      }, 500);
     }
-  }, [session, status, router]);
+  }, [session, status, router, isRedirecting]);
   
   // Handle query parameters
   useEffect(() => {
@@ -74,12 +82,14 @@ export default function LoginForm() {
         throw new Error(result?.error || 'Login failed. Please check your credentials.');
       }
       
-      // No need to redirect here - the useSession effect will handle it
-      // Just wait for the session to update
+      // Set redirecting flag to prevent multiple redirects
+      setIsRedirecting(true);
+      // Wait for session to update and the useEffect to handle redirect
       
     } catch (err) {
       console.error('Login error:', err);
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
+      setIsRedirecting(false);
     } finally {
       setIsLoading(false);
     }
@@ -107,6 +117,12 @@ export default function LoginForm() {
         {successMessage && (
           <div className="mb-6 p-3 bg-green-500/20 text-green-500 rounded-md text-center text-sm">
             {successMessage}
+          </div>
+        )}
+
+        {isRedirecting && (
+          <div className="mb-6 p-3 bg-blue-500/20 text-blue-500 rounded-md text-center text-sm">
+            Logging in... You will be redirected shortly.
           </div>
         )}
 
@@ -160,7 +176,7 @@ export default function LoginForm() {
           <button
             type="submit"
             className="w-full px-4 py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-md font-medium transition-colors"
-            disabled={isLoading}
+            disabled={isLoading || isRedirecting}
           >
             {isLoading ? (
               <div className="flex items-center justify-center">
@@ -170,6 +186,8 @@ export default function LoginForm() {
                 </svg>
                 <span>Signing in...</span>
               </div>
+            ) : isRedirecting ? (
+              <span>Redirecting...</span>
             ) : (
               'Sign in'
             )}
@@ -194,6 +212,7 @@ export default function LoginForm() {
                 setPassword('admin123');
               }}
               className="text-xs text-sky-400 hover:text-sky-300 py-1 px-2 rounded hover:bg-slate-700 transition-colors"
+              disabled={isLoading || isRedirecting}
             >
               Admin: admin@example.com / admin123
             </button>
@@ -203,6 +222,7 @@ export default function LoginForm() {
                 setPassword('customer123');
               }}
               className="text-xs text-sky-400 hover:text-sky-300 py-1 px-2 rounded hover:bg-slate-700 transition-colors"
+              disabled={isLoading || isRedirecting}
             >
               Customer: customer@example.com / customer123
             </button>
