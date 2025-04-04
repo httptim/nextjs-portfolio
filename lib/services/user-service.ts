@@ -1,5 +1,4 @@
 // lib/services/user-service.ts
-"use server";
 import { hash } from 'bcryptjs'; // Changed from bcrypt to bcryptjs
 import { prisma } from '../prisma';
 import { Role, User } from '@prisma/client';
