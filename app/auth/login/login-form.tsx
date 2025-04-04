@@ -22,12 +22,20 @@ export default function LoginForm() {
     if (status === 'authenticated' && session?.user) {
       console.log('Session authenticated, redirecting user based on role:', session.user.role);
       
+      // Store user data in localStorage for the existing dashboard components
+      localStorage.setItem('userName', session.user.name || 'User');
+      localStorage.setItem('userEmail', session.user.email || '');
+      localStorage.setItem('userRole', session.user.role.toLowerCase()); // Dashboard expects lowercase
+      
       // Redirect based on role
       const redirectPath = session.user.role === 'ADMIN' 
         ? '/dashboard/admin'
         : '/dashboard/customer';
       
-      router.push(redirectPath);
+      // Short delay to ensure localStorage is set before redirect
+      setTimeout(() => {
+        router.push(redirectPath);
+      }, 100);
     }
   }, [session, status, router]);
   
