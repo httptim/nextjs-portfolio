@@ -1,6 +1,6 @@
 // app/api/auth/[...nextauth]/route.ts
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { compare } from "bcrypt";
+import { compare } from "bcryptjs"; // Changed from bcrypt to bcryptjs
 import NextAuth, { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
