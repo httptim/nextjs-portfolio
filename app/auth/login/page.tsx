@@ -1,17 +1,48 @@
 // app/auth/login/page.tsx
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { signIn } from 'next-auth/react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Handle query parameters
+  useEffect(() => {
+    const registered = searchParams.get('registered');
+    const error = searchParams.get('error');
+    const callbackUrl = searchParams.get('callbackUrl');
+    
+    if (registered === 'true') {
+      setSuccessMessage('Registration successful! Please log in with your new account.');
+    }
+    
+    if (error) {
+      switch (error) {
+        case 'CredentialsSignin':
+          setError('Invalid email or password. Please try again.');
+          break;
+        default:
+          setError('An error occurred during sign in. Please try again.');
+          break;
+      }
+    }
+    
+    // If user was trying to access a protected page, show a message
+    if (callbackUrl && callbackUrl !== window.location.origin) {
+      setError('Please log in to access that page');
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,27 +50,30 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // In a real app, you would call your authentication API here
-      // For demo purposes, we'll simulate login with mock users
+      const callbackUrl = searchParams.get('callbackUrl') || '/';
+      
+      const result = await signIn('credentials', {
+        redirect: false,
+        email,
+        password,
+        callbackUrl,
+      });
 
-      if (email === 'admin@example.com' && password === 'admin123') {
-        // Admin login
-        localStorage.setItem('userRole', 'admin');
-        localStorage.setItem('userName', 'Admin User');
-        localStorage.setItem('userEmail', email);
+      if (!result?.ok) {
+        throw new Error(result?.error || 'Invalid credentials');
+      }
+
+      // Get the user's role from the session and redirect accordingly
+      const response = await fetch('/api/auth/session');
+      const session = await response.json();
+      
+      if (session?.user?.role === 'ADMIN') {
         router.push('/dashboard/admin');
-      } else if (email === 'customer@example.com' && password === 'customer123') {
-        // Customer login
-        localStorage.setItem('userRole', 'customer');
-        localStorage.setItem('userName', 'Customer User');
-        localStorage.setItem('userEmail', email);
-        router.push('/dashboard/customer');
       } else {
-        setError('Invalid email or password');
+        router.push('/dashboard/customer');
       }
     } catch (err) {
-      setError('An error occurred during login');
-      console.error(err);
+      setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setIsLoading(false);
     }
@@ -61,6 +95,12 @@ export default function LoginPage() {
         {error && (
           <div className="mb-6 p-3 bg-red-500/20 text-red-500 rounded-md text-center text-sm">
             {error}
+          </div>
+        )}
+        
+        {successMessage && (
+          <div className="mb-6 p-3 bg-green-500/20 text-green-500 rounded-md text-center text-sm">
+            {successMessage}
           </div>
         )}
 
@@ -140,12 +180,40 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-6 text-center">
-          <p className="text-sm text-slate-400 mb-2">For demo purposes:</p>
-          <p className="text-xs text-slate-500">Admin: admin@example.com / admin123</p>
-          <p className="text-xs text-slate-500">Customer: customer@example.com / customer123</p>
+          <p className="text-sm text-slate-400 mb-2">Demo accounts:</p>
+          <div className="flex flex-col gap-2">
+            <button 
+              onClick={() => {
+                setEmail('admin@example.com');
+                setPassword('admin123');
+              }}
+              className="text-xs text-sky-400 hover:text-sky-300 py-1 px-2 rounded hover:bg-slate-700 transition-colors"
+            >
+              Admin: admin@example.com / admin123
+            </button>
+            <button 
+              onClick={() => {
+                setEmail('customer@example.com');
+                setPassword('customer123');
+              }}
+              className="text-xs text-sky-400 hover:text-sky-300 py-1 px-2 rounded hover:bg-slate-700 transition-colors"
+            >
+              Customer: customer@example.com / customer123
+            </button>
+          </div>
         </div>
       </motion.div>
     </div>
   );
 }
 
+// app/api/auth/session/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../[...nextauth]/route';
+
+export async function GET(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  
+  return NextResponse.json(session);
+}

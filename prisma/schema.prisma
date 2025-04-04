@@ -1,0 +1,222 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// User model
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      Role     @default(CUSTOMER)
+  company   String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  projects        Project[]
+  tasksAssigned   Task[]            @relation("AssignedTo")
+  tasksCreated    Task[]            @relation("CreatedBy")
+  messages        Message[]
+  contactMessages ContactMessage[]
+  invoices        Invoice[]
+  payments        Payment[]
+}
+
+enum Role {
+  ADMIN
+  CUSTOMER
+}
+
+// Project model
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  status      Status   @default(ACTIVE)
+  startDate   DateTime
+  endDate     DateTime?
+  clientId    String
+  client      User     @relation(fields: [clientId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  tasks       Task[]
+  invoices    Invoice[]
+  conversations Conversation[]
+}
+
+enum Status {
+  ACTIVE
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+// Task model
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String
+  priority    Priority   @default(MEDIUM)
+  status      TaskStatus @default(TODO)
+  dueDate     DateTime
+  projectId   String
+  project     Project    @relation(fields: [projectId], references: [id])
+  assignedToId String?
+  assignedTo  User?      @relation("AssignedTo", fields: [assignedToId], references: [id])
+  createdById String
+  createdBy   User       @relation("CreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  COMPLETED
+}
+
+// Invoice model
+model Invoice {
+  id          String       @id @default(cuid())
+  number      String       @unique
+  amount      Float
+  status      InvoiceStatus @default(UNPAID)
+  date        DateTime
+  dueDate     DateTime
+  projectId   String
+  project     Project      @relation(fields: [projectId], references: [id])
+  clientId    String
+  client      User         @relation(fields: [clientId], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  items       InvoiceItem[]
+  payments    Payment[]
+}
+
+enum InvoiceStatus {
+  PAID
+  UNPAID
+  OVERDUE
+  CANCELLED
+}
+
+// Invoice Item model
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  description String
+  quantity    Int
+  rate        Float
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+// Payment model
+model Payment {
+  id          String   @id @default(cuid())
+  amount      Float
+  date        DateTime
+  method      String
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+// Conversation model
+model Conversation {
+  id          String   @id @default(cuid())
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  messages    Message[]
+}
+
+// Message model
+model Message {
+  id             String       @id @default(cuid())
+  content        String
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  read           Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+}
+
+// Contact form submissions
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  read      Boolean  @default(false)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Portfolio project (displayed on the public site)
+model PortfolioProject {
+  id           String              @id @default(cuid())
+  title        String
+  description  String
+  category     PortfolioCategory   @default(FULLSTACK)
+  technologies String[]
+  imageUrl     String?
+  demoUrl      String?
+  githubUrl    String?
+  features     String[]
+  status       String?
+  timeline     String?
+  tags         String[]
+  order        Int                 @default(0)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+}
+
+enum PortfolioCategory {
+  FULLSTACK
+  FRONTEND
+  BACKEND
+  MOBILE
+  FUTURE
+  PERSONAL
+}
+
+// File storage for uploaded files
+model File {
+  id          String   @id @default(cuid())
+  name        String
+  type        String
+  size        Int
+  url         String
+  key         String   @unique
+  projectId   String?
+  taskId      String?
+  createdAt   DateTime @default(now())
+}

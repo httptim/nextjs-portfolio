@@ -5,37 +5,67 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { CreateUserInput } from '@/lib/services/user-service';
 
 export default function RegisterPage() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState<CreateUserInput>({
+    name: '',
+    email: '',
+    password: '',
+    company: '',
+    phone: '',
+  });
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    if (name === 'confirmPassword') {
+      setConfirmPassword(value);
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     // Validate passwords
-    if (password !== confirmPassword) {
+    if (formData.password !== confirmPassword) {
       setError('Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // In a real app, you would call your registration API here
-      // For demo purposes, just route to login page
-      setTimeout(() => {
-        router.push('/auth/login');
-      }, 1500);
+      // Call the API to register the user
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Registration failed');
+      }
+
+      // Redirect to login page on success
+      router.push('/auth/login?registered=true');
     } catch (err) {
-      setError('An error occurred during registration');
-      console.error(err);
+      setError(err instanceof Error ? err.message : 'An error occurred during registration');
     } finally {
       setIsLoading(false);
     }
@@ -66,10 +96,11 @@ export default function RegisterPage() {
               Full Name
             </label>
             <input
-              id="name"
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
               className="w-full px-4 py-3 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
               placeholder="Enter your full name"
               required
@@ -81,13 +112,44 @@ export default function RegisterPage() {
               Email
             </label>
             <input
-              id="email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
               className="w-full px-4 py-3 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
               placeholder="Enter your email"
               required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="company" className="block text-sm font-medium text-slate-300 mb-1">
+              Company Name (Optional)
+            </label>
+            <input
+              type="text"
+              id="company"
+              name="company"
+              value={formData.company}
+              onChange={handleChange}
+              className="w-full px-4 py-3 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+              placeholder="Enter your company name"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="phone" className="block text-sm font-medium text-slate-300 mb-1">
+              Phone Number (Optional)
+            </label>
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              className="w-full px-4 py-3 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+              placeholder="Enter your phone number"
             />
           </div>
 
@@ -96,25 +158,28 @@ export default function RegisterPage() {
               Password
             </label>
             <input
-              id="password"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
               className="w-full px-4 py-3 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-              placeholder="Create a password"
+              placeholder="Create a password (min. 8 characters)"
               required
+              minLength={8}
             />
           </div>
 
           <div>
-            <label htmlFor="confirm-password" className="block text-sm font-medium text-slate-300 mb-1">
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-300 mb-1">
               Confirm Password
             </label>
             <input
-              id="confirm-password"
               type="password"
+              id="confirmPassword"
+              name="confirmPassword"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={handleChange}
               className="w-full px-4 py-3 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
               placeholder="Confirm your password"
               required
@@ -170,4 +235,43 @@ export default function RegisterPage() {
       </motion.div>
     </div>
   );
+}
+
+// app/api/auth/register/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { UserService } from '@/lib/services/user-service';
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    
+    // Create the user
+    const user = await UserService.createUser({
+      email: body.email,
+      password: body.password,
+      name: body.name,
+      company: body.company,
+      phone: body.phone,
+      role: 'CUSTOMER', // Default to customer role
+    });
+    
+    return NextResponse.json({ 
+      success: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      }
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to register user' 
+      },
+      { status: 400 }
+    );
+  }
 }
