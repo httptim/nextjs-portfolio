@@ -1,13 +1,14 @@
 // app/auth/login/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { signIn } from 'next-auth/react';
 
-export default function LoginPage() {
+// Create a separate client component that uses useSearchParams
+function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -207,3 +208,11 @@ export default function LoginPage() {
   );
 }
 
+// Main component with Suspense boundary
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-900 px-4">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
+  );
+}

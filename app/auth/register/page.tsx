@@ -1,13 +1,13 @@
 // app/auth/register/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { CreateUserInput } from '@/lib/services/user-service';
 
-export default function RegisterPage() {
+function RegisterForm() {
   const [formData, setFormData] = useState<CreateUserInput>({
     name: '',
     email: '',
@@ -234,5 +234,13 @@ export default function RegisterPage() {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-900 px-4">Loading...</div>}>
+      <RegisterForm />
+    </Suspense>
   );
 }
