@@ -12,7 +12,6 @@ export default function LoginForm() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const [isRedirecting, setIsRedirecting] = useState(false);
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -20,23 +19,17 @@ export default function LoginForm() {
   
   // Handle automatic redirect when session changes
   useEffect(() => {
-    // Only redirect if we're not already in the process of redirecting
-    // This helps prevent redirection loops
-    if (status === 'authenticated' && session?.user && !isRedirecting) {
-      console.log('Session authenticated:', session);
-      setIsRedirecting(true);
+    if (status === 'authenticated' && session?.user) {
+      console.log('Session authenticated, redirecting user based on role:', session.user.role);
       
-      // Add slight delay to ensure session is fully established
-      setTimeout(() => {
-        // Check role and redirect accordingly
-        if (session.user.role === 'ADMIN') {
-          router.push('/dashboard/admin');
-        } else {
-          router.push('/dashboard/customer');
-        }
-      }, 500);
+      // Redirect based on role
+      const redirectPath = session.user.role === 'ADMIN' 
+        ? '/dashboard/admin'
+        : '/dashboard/customer';
+      
+      router.push(redirectPath);
     }
-  }, [session, status, router, isRedirecting]);
+  }, [session, status, router]);
   
   // Handle query parameters
   useEffect(() => {
@@ -82,18 +75,34 @@ export default function LoginForm() {
         throw new Error(result?.error || 'Login failed. Please check your credentials.');
       }
       
-      // Set redirecting flag to prevent multiple redirects
-      setIsRedirecting(true);
-      // Wait for session to update and the useEffect to handle redirect
+      // Success will be handled by the useEffect that watches the session
       
     } catch (err) {
       console.error('Login error:', err);
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
-      setIsRedirecting(false);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // If we're already logged in, show loading state
+  if (status === 'loading' || (status === 'authenticated' && session?.user)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 px-4">
+        <div className="w-full max-w-md p-8 bg-slate-800 rounded-xl shadow-xl text-center">
+          <div className="flex flex-col items-center justify-center">
+            <svg className="animate-spin h-10 w-10 text-sky-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <h2 className="text-xl font-medium text-white mb-2">
+              {status === 'authenticated' ? 'Redirecting to dashboard...' : 'Loading...'}
+            </h2>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-900 px-4">
@@ -117,12 +126,6 @@ export default function LoginForm() {
         {successMessage && (
           <div className="mb-6 p-3 bg-green-500/20 text-green-500 rounded-md text-center text-sm">
             {successMessage}
-          </div>
-        )}
-
-        {isRedirecting && (
-          <div className="mb-6 p-3 bg-blue-500/20 text-blue-500 rounded-md text-center text-sm">
-            Logging in... You will be redirected shortly.
           </div>
         )}
 
@@ -176,7 +179,7 @@ export default function LoginForm() {
           <button
             type="submit"
             className="w-full px-4 py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-md font-medium transition-colors"
-            disabled={isLoading || isRedirecting}
+            disabled={isLoading}
           >
             {isLoading ? (
               <div className="flex items-center justify-center">
@@ -186,8 +189,6 @@ export default function LoginForm() {
                 </svg>
                 <span>Signing in...</span>
               </div>
-            ) : isRedirecting ? (
-              <span>Redirecting...</span>
             ) : (
               'Sign in'
             )}
@@ -212,7 +213,7 @@ export default function LoginForm() {
                 setPassword('admin123');
               }}
               className="text-xs text-sky-400 hover:text-sky-300 py-1 px-2 rounded hover:bg-slate-700 transition-colors"
-              disabled={isLoading || isRedirecting}
+              disabled={isLoading}
             >
               Admin: admin@example.com / admin123
             </button>
@@ -222,7 +223,7 @@ export default function LoginForm() {
                 setPassword('customer123');
               }}
               className="text-xs text-sky-400 hover:text-sky-300 py-1 px-2 rounded hover:bg-slate-700 transition-colors"
-              disabled={isLoading || isRedirecting}
+              disabled={isLoading}
             >
               Customer: customer@example.com / customer123
             </button>
