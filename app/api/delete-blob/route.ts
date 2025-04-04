@@ -1,6 +1,6 @@
-// app/api/upload/route.ts
+// app/api/delete-blob/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
+import { del } from '@vercel/blob';
 import { getToken } from 'next-auth/jwt';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -15,28 +15,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
     
-    // Get the filename from the query string
-    const filename = request.nextUrl.searchParams.get('filename');
+    // Get the URL from the request body
+    const { url } = await request.json();
     
-    if (!filename) {
+    if (!url) {
       return NextResponse.json(
-        { error: 'Filename is required' },
+        { error: 'URL is required' },
         { status: 400 }
       );
     }
     
-    // Upload to Vercel Blob
-    const blob = await put(filename, request.body!, {
-      access: 'public',
-    });
+    // Delete from Vercel Blob
+    await del(url);
     
-    return NextResponse.json(blob);
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error uploading file:', error);
+    console.error('Error deleting file:', error);
     return NextResponse.json(
-      { error: 'Failed to upload file' },
+      { error: 'Failed to delete file' },
       { status: 500 }
     );
   }
 }
-
