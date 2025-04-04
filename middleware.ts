@@ -1,6 +1,7 @@
 // middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { Role } from '@prisma/client';
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
@@ -36,12 +37,12 @@ export async function middleware(request: NextRequest) {
   const isAdminPath = path.includes('/dashboard/admin');
   const isCustomerPath = path.includes('/dashboard/customer');
   
-  if (isAdminPath && token.role !== 'ADMIN') {
+  if (isAdminPath && token.role !== Role.ADMIN) {
     // Redirect non-admin users trying to access admin routes
     return NextResponse.redirect(new URL('/dashboard/customer', request.url));
   }
   
-  if (isCustomerPath && token.role !== 'CUSTOMER' && token.role !== 'ADMIN') {
+  if (isCustomerPath && token.role !== Role.CUSTOMER && token.role !== Role.ADMIN) {
     // If somehow user has an invalid role, redirect to login
     return NextResponse.redirect(new URL('/auth/login', request.url));
   }

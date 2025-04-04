@@ -4,6 +4,7 @@ import { compare } from "bcryptjs";
 import { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
+import { Role } from "@prisma/client";
 
 // This function ensures we adapt to the environment variables that are available
 function getDatabaseUrl() {
@@ -89,7 +90,8 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id as string;
-        session.user.role = token.role as string;
+        // Fix the type issue by using proper casting
+        session.user.role = token.role as unknown as Role;
       }
       return session;
     },
