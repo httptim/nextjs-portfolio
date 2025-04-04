@@ -1,4 +1,3 @@
-// app/auth/login/page.tsx
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
@@ -48,6 +47,7 @@ function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
     setIsLoading(true);
 
     try {
@@ -57,24 +57,30 @@ function LoginForm() {
         redirect: false,
         email,
         password,
-        callbackUrl,
       });
 
       if (!result?.ok) {
-        throw new Error(result?.error || 'Invalid credentials');
+        throw new Error(result?.error || 'Login failed. Please check your credentials.');
       }
 
       // Get the user's role from the session and redirect accordingly
-      const response = await fetch('/api/auth/session');
-      const session = await response.json();
-      
-      if (session?.user?.role === 'ADMIN') {
-        router.push('/dashboard/admin');
-      } else {
+      try {
+        const response = await fetch('/api/auth/session');
+        const session = await response.json();
+        
+        if (session?.user?.role === 'ADMIN') {
+          router.push('/dashboard/admin');
+        } else {
+          router.push('/dashboard/customer');
+        }
+      } catch (sessionError) {
+        console.error('Error fetching session:', sessionError);
+        // Default fallback if session fetch fails
         router.push('/dashboard/customer');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      console.error('Login error:', err);
+      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
