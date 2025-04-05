@@ -70,9 +70,12 @@ export async function GET(
 }
 
 // PUT handler to update a specific testimonial by ID (admin only)
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
-  const id = params.id;
+export async function PUT(request: NextRequest, context: any) {
   try {
+    const id = context.params.id;
+    if (!id) {
+        return NextResponse.json({ error: 'Bad Request', details: 'Missing testimonial ID in request path.' }, { status: 400 });
+    }
     console.log(`Testimonials API PUT called for ID: ${id}`);
     const session = await getServerSession(authOptions);
 
@@ -148,10 +151,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ testimonial: updatedTestimonial });
 
   } catch (error) {
+    const idForError = context?.params?.id || '[unknown]';
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      return NextResponse.json({ error: 'Not Found', details: `Testimonial with ID ${id} not found.` }, { status: 404 });
+      return NextResponse.json({ error: 'Not Found', details: `Testimonial with ID ${idForError} not found.` }, { status: 404 });
     }
-    console.error(`Error updating testimonial ${id}:`, error);
+    console.error(`Error updating testimonial ${idForError}:`, error);
     return NextResponse.json(
       { error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -160,9 +164,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 }
 
 // DELETE handler for a specific testimonial by ID (admin only)
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
-  const id = params.id;
-   try {
+export async function DELETE(request: NextRequest, context: any) {
+  try {
+    const id = context.params.id;
+    if (!id) {
+        return NextResponse.json({ error: 'Bad Request', details: 'Missing testimonial ID in request path.' }, { status: 400 });
+    }
     console.log(`Testimonials API DELETE called for ID: ${id}`);
     const session = await getServerSession(authOptions);
 
@@ -183,11 +190,12 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     return NextResponse.json({ message: 'Testimonial deleted successfully' }, { status: 200 });
 
   } catch (error) {
-     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+    const idForError = context?.params?.id || '[unknown]';
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
       // Record to delete not found
-      return NextResponse.json({ error: 'Not Found', details: `Testimonial with ID ${id} not found.` }, { status: 404 });
+      return NextResponse.json({ error: 'Not Found', details: `Testimonial with ID ${idForError} not found.` }, { status: 404 });
     }
-    console.error(`Error deleting testimonial ${id}:`, error);
+    console.error(`Error deleting testimonial ${idForError}:`, error);
     return NextResponse.json(
       { error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
