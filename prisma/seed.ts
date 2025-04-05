@@ -1,6 +1,7 @@
 // prisma/seed.ts
 import { PrismaClient, Role } from '@prisma/client';
 import { hash } from 'bcryptjs'; // Changed from bcrypt to bcryptjs
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -67,31 +68,23 @@ async function main() {
   
   // Create admin user if it doesn't exist
   const adminEmail = 'admin@example.com';
+  const adminPassword = 'admin123'; // Change this in production!
   
-  const existingAdmin = await prisma.user.findUnique({
-    where: {
+  const hashedPassword = await bcrypt.hash(adminPassword, 10);
+  
+  const admin = await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {},
+    create: {
       email: adminEmail,
+      name: 'Admin User',
+      password: hashedPassword,
+      role: Role.ADMIN,
+      company: 'Admin Company'
     },
   });
-  
-  if (!existingAdmin) {
-    console.log('Creating admin user...');
-    
-    const hashedPassword = await hash('admin123', 10);
-    
-    await prisma.user.create({
-      data: {
-        email: adminEmail,
-        name: 'Admin User',
-        password: hashedPassword,
-        role: Role.ADMIN,
-      },
-    });
-    
-    console.log('Admin user created successfully.');
-  } else {
-    console.log('Admin user already exists.');
-  }
+
+  console.log('Admin user created:', admin);
   
   // Create demo customer user if it doesn't exist
   const customerEmail = 'customer@example.com';
