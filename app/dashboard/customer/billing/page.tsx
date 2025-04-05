@@ -7,17 +7,18 @@ import { motion } from 'framer-motion';
 interface Invoice {
   id: string;
   number: string;
+  amount: number;
+  status: string;
   date: string;
   dueDate: string;
-  amount: number;
-  status: 'PAID' | 'UNPAID' | 'OVERDUE' | 'CANCELLED';
-  project: string;
+  project: {
+    name: string;
+  };
   items: {
     id: string;
     description: string;
     quantity: number;
     rate: number;
-    amount: number;
   }[];
 }
 
@@ -30,7 +31,7 @@ interface PaymentMethod {
   isDefault: boolean;
 }
 
-export default function CustomerBilling() {
+export default function BillingPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,37 +39,23 @@ export default function CustomerBilling() {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Fetch billing data from API
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+    const fetchInvoices = async () => {
       try {
-        // Fetch invoices
-        const invoicesResponse = await fetch('/api/invoices/customer');
-        
-        if (!invoicesResponse.ok) {
+        const response = await fetch('/api/dashboard/customer/billing');
+        if (!response.ok) {
           throw new Error('Failed to fetch invoices');
         }
-        
-        const invoicesData = await invoicesResponse.json();
-        setInvoices(invoicesData.invoices);
-        
-        // Fetch payment methods
-        const paymentMethodsResponse = await fetch('/api/payment-methods');
-        
-        if (paymentMethodsResponse.ok) {
-          const paymentMethodsData = await paymentMethodsResponse.json();
-          setPaymentMethods(paymentMethodsData.paymentMethods);
-        }
-      } catch (err) {
-        console.error('Error fetching billing data:', err);
-        setError(err instanceof Error ? err.message : 'An error occurred while fetching billing data');
+        const data = await response.json();
+        setInvoices(data.invoices);
+      } catch (error) {
+        console.error('Error fetching invoices:', error);
       } finally {
         setLoading(false);
       }
     };
-    
-    fetchData();
+
+    fetchInvoices();
   }, []);
 
   const handleViewInvoice = (invoice: Invoice) => {
@@ -344,7 +331,7 @@ export default function CustomerBilling() {
                           <div className="text-sm font-medium text-white">{invoice.number}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-slate-300">{invoice.project}</div>
+                          <div className="text-sm text-slate-300">{invoice.project.name}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-slate-300">{formatDate(invoice.date)}</div>
@@ -524,7 +511,7 @@ export default function CustomerBilling() {
                           ${item.rate.toFixed(2)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                          ${item.amount.toFixed(2)}
+                          ${(item.quantity * item.rate).toFixed(2)}
                         </td>
                       </tr>
                     ))}
