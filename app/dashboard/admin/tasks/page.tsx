@@ -105,6 +105,7 @@ export default function TasksPage() {
   }, []);
 
   // Filtered and searched tasks
+  const [projectFilter, setProjectFilter] = useState<string>('all');
   const filteredTasks = tasks
     .filter(task => {
       if (filter === 'all') return true;
