@@ -31,9 +31,12 @@ export async function GET(request: NextRequest) {
         include: {
           project: {
             select: {
+              id: true,
               name: true,
+              clientId: true,
               client: {
                 select: {
+                  id: true,
                   name: true,
                   email: true
                 }
@@ -42,6 +45,7 @@ export async function GET(request: NextRequest) {
           },
           assignedTo: {
             select: {
+              id: true,
               name: true,
               email: true
             }
@@ -53,12 +57,21 @@ export async function GET(request: NextRequest) {
       });
       
       // Format dates to ISO strings for JSON response
-      const formattedTasks = tasks.map(task => ({
-        ...task,
-        createdAt: task.createdAt.toISOString(),
-        updatedAt: task.updatedAt.toISOString(),
-        dueDate: task.dueDate.toISOString()
-      }));
+      const formattedTasks = tasks.map(task => {
+        // Make sure each task has a customer property based on the project.client
+        return {
+          ...task,
+          // Add customer property explicitly
+          customer: task.project.client || { 
+            id: task.project.clientId, 
+            name: 'Unknown Customer',
+            email: 'unknown@example.com'
+          },
+          createdAt: task.createdAt.toISOString(),
+          updatedAt: task.updatedAt.toISOString(),
+          dueDate: task.dueDate.toISOString()
+        };
+      });
       
       return NextResponse.json({ tasks: formattedTasks });
     } 
@@ -73,12 +86,23 @@ export async function GET(request: NextRequest) {
         include: {
           project: {
             select: {
-              name: true
+              id: true,
+              name: true,
+              clientId: true,
+              client: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true
+                }
+              }
             }
           },
           assignedTo: {
             select: {
-              name: true
+              id: true,
+              name: true,
+              email: true
             }
           }
         },
@@ -88,12 +112,21 @@ export async function GET(request: NextRequest) {
       });
       
       // Format dates to ISO strings for JSON response
-      const formattedTasks = tasks.map(task => ({
-        ...task,
-        createdAt: task.createdAt.toISOString(),
-        updatedAt: task.updatedAt.toISOString(),
-        dueDate: task.dueDate.toISOString()
-      }));
+      const formattedTasks = tasks.map(task => {
+        // Make sure each task has a customer property based on the project.client
+        return {
+          ...task,
+          // Add customer property explicitly
+          customer: task.project.client || { 
+            id: task.project.clientId, 
+            name: 'Unknown Customer',
+            email: 'unknown@example.com'
+          },
+          createdAt: task.createdAt.toISOString(),
+          updatedAt: task.updatedAt.toISOString(),
+          dueDate: task.dueDate.toISOString()
+        };
+      });
       
       return NextResponse.json({ tasks: formattedTasks });
     }
