@@ -569,10 +569,16 @@ export default function ContentManagement() {
                   </label>
                   <input
                     type="text"
+                    name="technologies"
                     id="technologies"
-                    value={editingProject.technologies.join(', ')}
+                    value={
+                      Array.isArray(editingProject?.technologies)
+                        ? editingProject.technologies.join(', ')
+                        : editingProject?.technologies || ''
+                    }
                     onChange={handleInputChange}
                     className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    placeholder="e.g., React, Node.js, Prisma"
                   />
                 </div>
 
@@ -608,10 +614,16 @@ export default function ContentManagement() {
                   </label>
                   <input
                     type="text"
+                    name="features"
                     id="features"
-                    value={Array.isArray(editingProject.features) ? editingProject.features.join(', ') : (editingProject.features || '')}
+                    value={
+                      Array.isArray(editingProject?.features)
+                        ? editingProject.features.join(', ')
+                        : editingProject?.features || ''
+                    }
                     onChange={handleInputChange}
                     className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    placeholder="e.g., Auth, Real-time updates"
                   />
                 </div>
 
@@ -660,10 +672,16 @@ export default function ContentManagement() {
                   </label>
                   <input
                     type="text"
+                    name="tags"
                     id="tags"
-                    value={Array.isArray(editingProject.tags) ? editingProject.tags.join(', ') : (editingProject.tags || '')}
+                    value={
+                      Array.isArray(editingProject?.tags)
+                        ? editingProject.tags.join(', ')
+                        : editingProject?.tags || ''
+                    }
                     onChange={handleInputChange}
                     className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    placeholder="e.g., API, Data Viz, SaaS"
                   />
                 </div>
 
@@ -673,6 +691,7 @@ export default function ContentManagement() {
                   </label>
                   <input
                     type="number"
+                    name="order"
                     id="order"
                     value={editingProject.order || 0}
                     onChange={handleInputChange}
