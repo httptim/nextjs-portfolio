@@ -33,6 +33,13 @@ export async function GET(request: NextRequest) {
             select: {
               id: true,
               name: true,
+              client: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true
+                }
+              }
             }
           }
         },
@@ -42,16 +49,27 @@ export async function GET(request: NextRequest) {
       });
       
       // Format dates for JSON
-      const formattedInvoices = invoices.map(invoice => ({
-        id: invoice.id,
-        number: invoice.number,
-        amount: invoice.amount,
-        status: invoice.status,
-        date: invoice.createdAt.toISOString(),
-        dueDate: invoice.dueDate.toISOString(),
-        project: invoice.project,
-        items: [] // Default empty array for items
-      }));
+      const formattedInvoices = invoices.map(invoice => {
+        const customer = invoice.project?.client;
+        if (!customer) {
+          console.warn(`Invoice ${invoice.id} is missing customer data via project.`);
+        }
+        return {
+          id: invoice.id,
+          number: invoice.number,
+          amount: invoice.amount,
+          status: invoice.status,
+          date: invoice.createdAt.toISOString(),
+          dueDate: invoice.dueDate.toISOString(),
+          project: invoice.project?.name || 'N/A',
+          customer: customer ? {
+            id: customer.id,
+            name: customer.name || 'N/A',
+            email: customer.email || 'N/A'
+          } : { id: 'unknown', name: 'Unknown Customer', email: ''},
+          items: []
+        };
+      });
       
       console.log(`Found ${formattedInvoices.length} invoices for admin`);
       return NextResponse.json({ invoices: formattedInvoices });
@@ -71,6 +89,13 @@ export async function GET(request: NextRequest) {
             select: {
               id: true,
               name: true,
+              client: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true
+                }
+              }
             }
           }
         },
@@ -80,16 +105,27 @@ export async function GET(request: NextRequest) {
       });
       
       // Format dates for JSON
-      const formattedInvoices = invoices.map(invoice => ({
-        id: invoice.id,
-        number: invoice.number,
-        amount: invoice.amount,
-        status: invoice.status,
-        date: invoice.createdAt.toISOString(),
-        dueDate: invoice.dueDate.toISOString(),
-        project: invoice.project,
-        items: [] // Default empty array for items
-      }));
+      const formattedInvoices = invoices.map(invoice => {
+        const customer = invoice.project?.client;
+        if (!customer) {
+          console.warn(`Invoice ${invoice.id} is missing customer data via project for customer ${session.user?.id}.`);
+        }
+        return {
+          id: invoice.id,
+          number: invoice.number,
+          amount: invoice.amount,
+          status: invoice.status,
+          date: invoice.createdAt.toISOString(),
+          dueDate: invoice.dueDate.toISOString(),
+          project: invoice.project?.name || 'N/A',
+          customer: customer ? {
+            id: customer.id,
+            name: customer.name || 'N/A',
+            email: customer.email || 'N/A'
+          } : { id: 'unknown', name: 'Unknown Customer', email: ''},
+          items: []
+        };
+      });
       
       console.log(`Found ${formattedInvoices.length} invoices for customer ${session.user.id}`);
       return NextResponse.json({ invoices: formattedInvoices });
