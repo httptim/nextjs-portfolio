@@ -61,23 +61,42 @@ export default function ContactSubmissionsPage() {
 
   // Mark submission as read
   const markAsRead = async (id: string) => {
+    // Prevent double-marking if already optimistic
+    const currentSubmission = submissions.find(sub => sub.id === id);
+    if (currentSubmission?.read) return; 
+
+    // Optimistically update UI first
+    const updatedSubmissionsOptimistic = submissions.map(submission => 
+      submission.id === id ? { ...submission, read: true } : submission
+    );
+    setSubmissions(updatedSubmissionsOptimistic);
+
     try {
-      const response = await fetch(`/api/contact-submissions/${id}/read`, {
-        method: 'POST',
+      // Correct API call
+      const response = await fetch(`/api/contact-submissions/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ read: true }), // Send correct body
       });
       
       if (!response.ok) {
-        throw new Error('Failed to mark submission as read');
+         // Revert optimistic update on failure
+        setSubmissions(submissions); 
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.details || errorData.error || 'Failed to mark submission as read');
       }
       
-      const updatedSubmissions = submissions.map(submission => 
-        submission.id === id ? { ...submission, read: true } : submission
-      );
+      // If successful, the optimistic update is already correct. 
+      // Optionally, fetch the updated item from response if needed for more complex state.
+      // const data = await response.json(); // Example: get updated data from API
       
-      setSubmissions(updatedSubmissions);
     } catch (err) {
-      console.error('Error marking submission as read:', err);
-      alert(err instanceof Error ? err.message : 'An error occurred while marking as read');
+       // Revert optimistic update on failure
+       setSubmissions(submissions); 
+       console.error('Error marking submission as read:', err);
+       alert(err instanceof Error ? err.message : 'An error occurred while marking as read');
     }
   };
 
