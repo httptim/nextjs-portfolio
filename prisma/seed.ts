@@ -123,40 +123,58 @@ async function main() {
 
   console.log('Project created:', project);
 
-  // Create demo tasks
-  const tasks = await Promise.all([
-    prisma.task.create({
-      data: {
-        title: 'Design Homepage',
-        description: 'Create the homepage design mockup',
-        priority: Priority.HIGH,
-        status: TaskStatus.IN_PROGRESS,
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-        projectId: project.id,
-        createdById: admin.id,
-        assignedToId: admin.id,
-      },
-    }),
-    prisma.task.create({
-      data: {
-        title: 'Implement Authentication',
-        description: 'Set up user authentication system',
-        priority: Priority.MEDIUM,
-        status: TaskStatus.TODO,
-        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
-        projectId: project.id,
-        createdById: admin.id,
-        assignedToId: admin.id,
-      },
-    }),
-  ]);
+  // Create demo tasks if they don't exist
+  const existingTasks = await prisma.task.count({
+    where: {
+      projectId: project.id
+    }
+  });
 
-  console.log('Tasks created:', tasks);
+  if (existingTasks === 0) {
+    const tasks = await Promise.all([
+      prisma.task.create({
+        data: {
+          title: 'Design Homepage',
+          description: 'Create the homepage design mockup',
+          priority: Priority.HIGH,
+          status: TaskStatus.IN_PROGRESS,
+          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+          projectId: project.id,
+          createdById: admin.id,
+          assignedToId: admin.id,
+        },
+      }),
+      prisma.task.create({
+        data: {
+          title: 'Implement Authentication',
+          description: 'Set up user authentication system',
+          priority: Priority.MEDIUM,
+          status: TaskStatus.TODO,
+          dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+          projectId: project.id,
+          createdById: admin.id,
+          assignedToId: admin.id,
+        },
+      }),
+    ]);
+
+    console.log('Tasks created:', tasks);
+  } else {
+    console.log('Tasks already exist for this project');
+  }
 
   // Create demo invoice
-  const invoice = await prisma.invoice.create({
-    data: {
-      number: 'INV-001',
+  const invoiceNumber = `INV-001-${Math.floor(Math.random() * 10000)}`;
+  const invoice = await prisma.invoice.upsert({
+    where: { number: invoiceNumber },
+    update: {
+      amount: 1000.00,
+      status: InvoiceStatus.UNPAID,
+      date: new Date(),
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+    },
+    create: {
+      number: invoiceNumber,
       amount: 1000.00,
       status: InvoiceStatus.UNPAID,
       date: new Date(),
@@ -177,26 +195,36 @@ async function main() {
 
   console.log('Invoice created:', invoice);
 
-  // Create demo conversation
-  const conversation = await prisma.conversation.create({
-    data: {
-      projectId: project.id,
-      messages: {
-        create: [
-          {
-            content: 'Hello, I have a question about the project timeline.',
-            senderId: customer.id,
-          },
-          {
-            content: 'Hi! I\'d be happy to discuss the timeline with you.',
-            senderId: admin.id,
-          },
-        ],
-      },
-    },
+  // Create demo conversation if it doesn't exist
+  const existingConversations = await prisma.conversation.count({
+    where: {
+      projectId: project.id
+    }
   });
 
-  console.log('Conversation created:', conversation);
+  if (existingConversations === 0) {
+    const conversation = await prisma.conversation.create({
+      data: {
+        projectId: project.id,
+        messages: {
+          create: [
+            {
+              content: 'Hello, I have a question about the project timeline.',
+              senderId: customer.id,
+            },
+            {
+              content: 'Hi! I\'d be happy to discuss the timeline with you.',
+              senderId: admin.id,
+            },
+          ],
+        },
+      },
+    });
+
+    console.log('Conversation created:', conversation);
+  } else {
+    console.log('Conversations already exist for this project');
+  }
 
   console.log('Database seeding completed successfully.');
 }
