@@ -21,7 +21,8 @@ export default function CustomerTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'todo' | 'in-progress' | 'review' | 'completed'>('all');
+  // Update the filter type to match the task status
+  const [filter, setFilter] = useState<'all' | 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'COMPLETED'>('all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -68,6 +69,7 @@ export default function CustomerTasks() {
 
   // Filter tasks
   const filteredTasks = tasks
+    // Update the filter logic
     .filter(task => filter === 'all' || task.status === filter)
     .filter(task => priorityFilter === 'all' || task.priority.toLowerCase() === priorityFilter)
     .filter(task => projectFilter === 'all' || task.projectId === projectFilter)
@@ -214,10 +216,10 @@ export default function CustomerTasks() {
                   className="px-3 py-2 bg-slate-700 border-slate-600 rounded-md focus:ring-sky-500 focus:border-sky-500 text-white text-sm"
                 >
                   <option value="all">All Statuses</option>
-                  <option value="todo">To Do</option>
-                  <option value="in-progress">In Progress</option>
-                  <option value="review">In Review</option>
-                  <option value="completed">Completed</option>
+                  <option value="TODO">To Do</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="REVIEW">In Review</option>
+                  <option value="COMPLETED">Completed</option>
                 </select>
 
                 <select
