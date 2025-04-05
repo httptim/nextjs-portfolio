@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
 
 interface ContactSubmission {
   id: string;
@@ -16,47 +17,95 @@ interface ContactSubmission {
 export default function ContactSubmissionsPage() {
   const [submissions, setSubmissions] = useState<ContactSubmission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedSubmission, setSelectedSubmission] = useState<ContactSubmission | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'read' | 'unread'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Get URL params to handle direct links to specific submissions
+  const searchParams = useSearchParams();
+  const submissionId = searchParams.get('id');
 
-  // Load submissions from localStorage
+  // Load submissions from API
   useEffect(() => {
-    try {
-      const submissionsJSON = localStorage.getItem('contactSubmissions');
-      if (submissionsJSON) {
-        const loadedSubmissions = JSON.parse(submissionsJSON);
-        setSubmissions(loadedSubmissions);
+    const fetchSubmissions = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch('/api/contact-submissions');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch contact submissions');
+        }
+        
+        const data = await response.json();
+        setSubmissions(data.submissions);
+        
+        // If there's an ID in the URL, find and view that submission
+        if (submissionId) {
+          const submission = data.submissions.find((sub: ContactSubmission) => sub.id === submissionId);
+          if (submission) {
+            viewSubmission(submission);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching contact submissions:', err);
+        setError(err instanceof Error ? err.message : 'An error occurred while fetching submissions');
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error loading contact submissions:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    };
+    
+    fetchSubmissions();
+  }, [submissionId]);
 
   // Mark submission as read
-  const markAsRead = (id: string) => {
-    const updatedSubmissions = submissions.map(submission => 
-      submission.id === id ? { ...submission, read: true } : submission
-    );
-    
-    setSubmissions(updatedSubmissions);
-    localStorage.setItem('contactSubmissions', JSON.stringify(updatedSubmissions));
+  const markAsRead = async (id: string) => {
+    try {
+      const response = await fetch(`/api/contact-submissions/${id}/read`, {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to mark submission as read');
+      }
+      
+      const updatedSubmissions = submissions.map(submission => 
+        submission.id === id ? { ...submission, read: true } : submission
+      );
+      
+      setSubmissions(updatedSubmissions);
+    } catch (err) {
+      console.error('Error marking submission as read:', err);
+      alert(err instanceof Error ? err.message : 'An error occurred while marking as read');
+    }
   };
 
   // Delete submission
-  const deleteSubmission = (id: string) => {
-    if (confirm('Are you sure you want to delete this submission?')) {
+  const deleteSubmission = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this submission?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/contact-submissions/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete submission');
+      }
+      
       const updatedSubmissions = submissions.filter(submission => submission.id !== id);
       setSubmissions(updatedSubmissions);
-      localStorage.setItem('contactSubmissions', JSON.stringify(updatedSubmissions));
       
       if (selectedSubmission?.id === id) {
         setSelectedSubmission(null);
         setIsModalOpen(false);
       }
+    } catch (err) {
+      console.error('Error deleting submission:', err);
+      alert(err instanceof Error ? err.message : 'An error occurred while deleting submission');
     }
   };
 
@@ -82,14 +131,37 @@ export default function ContactSubmissionsPage() {
 
   // Format date
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sky-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+          <div className="bg-red-500/20 text-red-500 p-4 rounded-md">
+            {error}
+            <button 
+              className="ml-2 underline"
+              onClick={() => window.location.reload()}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

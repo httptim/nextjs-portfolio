@@ -9,10 +9,10 @@ interface Project {
   id: string;
   name: string;
   description: string;
-  status: 'active' | 'completed' | 'on-hold';
+  status: 'ACTIVE' | 'COMPLETED' | 'ON_HOLD' | 'CANCELLED';
   progress: number;
   startDate: string;
-  endDate: string;
+  endDate: string | null;
   tasks: {
     total: number;
     completed: number;
@@ -22,94 +22,90 @@ interface Project {
 export default function CustomerProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'on-hold'>('all');
 
-  // Load projects data
+  // Fetch projects from API
   useEffect(() => {
-    // In a real app, this would be an API call
-    const loadProjects = () => {
-      setProjects([
-        {
-          id: 'p1',
-          name: 'E-Commerce Website',
-          description: 'A full-featured online store with product management, cart functionality, and secure payment processing.',
-          status: 'active',
-          progress: 65,
-          startDate: '2025-03-15',
-          endDate: '2025-05-30',
-          tasks: {
-            total: 15,
-            completed: 8,
-          },
-        },
-        {
-          id: 'p2',
-          name: 'Mobile App UI/UX',
-          description: 'Design and implementation of user interface for iOS and Android mobile application.',
-          status: 'active',
-          progress: 25,
-          startDate: '2025-03-25',
-          endDate: '2025-06-10',
-          tasks: {
-            total: 12,
-            completed: 3,
-          },
-        },
-        {
-          id: 'p3',
-          name: 'Brand Identity Redesign',
-          description: 'Complete redesign of company brand identity including logo, color palette, and style guide.',
-          status: 'completed',
-          progress: 100,
-          startDate: '2025-01-10',
-          endDate: '2025-02-28',
-          tasks: {
-            total: 8,
-            completed: 8,
-          },
-        },
-        {
-          id: 'p4',
-          name: 'Marketing Website',
-          description: 'Corporate website with information about services, team, and contact form.',
-          status: 'on-hold',
-          progress: 40,
-          startDate: '2025-02-15',
-          endDate: '2025-04-30',
-          tasks: {
-            total: 10,
-            completed: 4,
-          },
-        },
-      ]);
-      setLoading(false);
+    const fetchProjects = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch('/api/projects/customer');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch projects');
+        }
+        
+        const data = await response.json();
+        setProjects(data.projects);
+      } catch (err) {
+        console.error('Error fetching projects:', err);
+        setError(err instanceof Error ? err.message : 'An error occurred while fetching projects');
+      } finally {
+        setLoading(false);
+      }
     };
-
-    loadProjects();
+    
+    fetchProjects();
   }, []);
 
   // Filter projects based on status
   const filteredProjects = filter === 'all' 
     ? projects 
-    : projects.filter(project => project.status === filter);
+    : projects.filter(project => {
+        if (filter === 'active') return project.status === 'ACTIVE';
+        if (filter === 'completed') return project.status === 'COMPLETED';
+        if (filter === 'on-hold') return project.status === 'ON_HOLD';
+        return true;
+      });
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active':
+      case 'ACTIVE':
         return 'bg-green-500/20 text-green-500';
-      case 'completed':
+      case 'COMPLETED':
         return 'bg-blue-500/20 text-blue-500';
-      case 'on-hold':
+      case 'ON_HOLD':
         return 'bg-yellow-500/20 text-yellow-500';
+      case 'CANCELLED':
+        return 'bg-red-500/20 text-red-500';
       default:
         return 'bg-slate-500/20 text-slate-300';
     }
+  };
+
+  // Format date for display
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Not set';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sky-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+          <div className="bg-red-500/20 text-red-500 p-4 rounded-md">
+            {error}
+            <button 
+              className="ml-2 underline"
+              onClick={() => window.location.reload()}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -183,7 +179,7 @@ export default function CustomerProjects() {
                   <div className="flex justify-between items-start mb-4">
                     <h2 className="text-xl font-medium text-white">{project.name}</h2>
                     <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(project.status)}`}>
-                      {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
+                      {project.status.charAt(0) + project.status.slice(1).toLowerCase().replace('_', ' ')}
                     </span>
                   </div>
                   
@@ -205,11 +201,11 @@ export default function CustomerProjects() {
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
                       <p className="text-xs text-slate-400">Start Date</p>
-                      <p className="text-sm text-white">{project.startDate}</p>
+                      <p className="text-sm text-white">{formatDate(project.startDate)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-slate-400">End Date</p>
-                      <p className="text-sm text-white">{project.endDate}</p>
+                      <p className="text-sm text-white">{formatDate(project.endDate)}</p>
                     </div>
                   </div>
                   
@@ -237,4 +233,3 @@ export default function CustomerProjects() {
     </div>
   );
 }
-

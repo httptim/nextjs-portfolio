@@ -7,7 +7,11 @@ import { motion } from 'framer-motion';
 interface Message {
   id: string;
   content: string;
-  sender: 'admin' | 'customer';
+  sender: {
+    id: string;
+    name: string;
+    role: 'ADMIN' | 'CUSTOMER';
+  };
   timestamp: string;
   read: boolean;
 }
@@ -19,11 +23,14 @@ interface Conversation {
     name: string;
     email: string;
   };
-  project: string;
+  project: {
+    id: string;
+    name: string;
+  } | null;
   lastMessage: {
     content: string;
     timestamp: string;
-    sender: 'admin' | 'customer';
+    sender: 'ADMIN' | 'CUSTOMER';
   };
   unreadCount: number;
   messages: Message[];
@@ -34,157 +41,38 @@ export default function AdminMessagesPage() {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Load conversation data
+  // Fetch conversations
   useEffect(() => {
-    // In a real app, this would be an API call
-    const loadData = () => {
-      const mockConversations: Conversation[] = [
-        {
-          id: 'conv1',
-          customer: {
-            id: 'c1',
-            name: 'John Smith',
-            email: 'john.smith@example.com',
-          },
-          project: 'E-Commerce Website',
-          lastMessage: {
-            content: 'I\'ve also been considering the mobile responsiveness of the site.',
-            timestamp: '2025-04-03T10:35:00',
-            sender: 'customer',
-          },
-          unreadCount: 2,
-          messages: [
-            {
-              id: 'm1',
-              content: 'Hello! How can I help you with the E-Commerce Website project?',
-              sender: 'admin',
-              timestamp: '2025-04-02T09:00:00',
-              read: true,
-            },
-            {
-              id: 'm2',
-              content: 'I have a question about the product listing page layout.',
-              sender: 'customer',
-              timestamp: '2025-04-02T09:05:00',
-              read: true,
-            },
-            {
-              id: 'm3',
-              content: 'Of course! What specifically would you like to know about the layout?',
-              sender: 'admin',
-              timestamp: '2025-04-02T09:10:00',
-              read: true,
-            },
-            {
-              id: 'm4',
-              content: 'I was wondering if we could add a filtering sidebar for categories and price ranges.',
-              sender: 'customer',
-              timestamp: '2025-04-02T09:15:00',
-              read: true,
-            },
-            {
-              id: 'm5',
-              content: 'Absolutely! That\'s a great idea. I\'ll create a mockup showing how that could work and share it with you tomorrow.',
-              sender: 'admin',
-              timestamp: '2025-04-02T09:20:00',
-              read: true,
-            },
-            {
-              id: 'm6',
-              content: 'Thank you! I\'m looking forward to seeing it.',
-              sender: 'customer',
-              timestamp: '2025-04-02T09:25:00',
-              read: true,
-            },
-            {
-              id: 'm7',
-              content: 'Hi, I was thinking about the homepage design and wondering if we could schedule a quick call to discuss some ideas?',
-              sender: 'customer',
-              timestamp: '2025-04-03T10:30:00',
-              read: false,
-            },
-            {
-              id: 'm8',
-              content: 'I\'ve also been considering the mobile responsiveness of the site.',
-              sender: 'customer',
-              timestamp: '2025-04-03T10:35:00',
-              read: false,
-            },
-          ],
-        },
-        {
-          id: 'conv2',
-          customer: {
-            id: 'c2',
-            name: 'Emma Johnson',
-            email: 'emma.johnson@example.com',
-          },
-          project: 'Mobile App UI/UX',
-          lastMessage: {
-            content: 'I\'ve uploaded the latest wireframes for review.',
-            timestamp: '2025-03-28T16:45:00',
-            sender: 'admin',
-          },
-          unreadCount: 0,
-          messages: [
-            {
-              id: 'm1',
-              content: 'I\'ve uploaded the latest wireframes for review.',
-              sender: 'admin',
-              timestamp: '2025-03-28T16:45:00',
-              read: true,
-            },
-          ],
-        },
-        {
-          id: 'conv3',
-          customer: {
-            id: 'c3',
-            name: 'Michael Brown',
-            email: 'michael.brown@example.com',
-          },
-          project: 'CRM System',
-          lastMessage: {
-            content: 'Thanks for the update on the progress. Looking forward to seeing the demo next week.',
-            timestamp: '2025-04-01T11:20:00',
-            sender: 'customer',
-          },
-          unreadCount: 1,
-          messages: [
-            {
-              id: 'm1',
-              content: 'Hi Michael, I wanted to give you an update on the CRM system. We\'ve completed the user management module and are now working on the reporting dashboard.',
-              sender: 'admin',
-              timestamp: '2025-04-01T11:00:00',
-              read: true,
-            },
-            {
-              id: 'm2',
-              content: 'Thanks for the update on the progress. Looking forward to seeing the demo next week.',
-              sender: 'customer',
-              timestamp: '2025-04-01T11:20:00',
-              read: false,
-            },
-          ],
-        },
-      ];
-      
-      setConversations(mockConversations);
-      setLoading(false);
+    const fetchConversations = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch('/api/conversations');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch conversations');
+        }
+        
+        const data = await response.json();
+        setConversations(data.conversations);
+        
+        // Select first conversation by default if none selected
+        if (data.conversations.length > 0 && !selectedConversation) {
+          setSelectedConversation(data.conversations[0].id);
+        }
+      } catch (err) {
+        console.error('Error fetching conversations:', err);
+        setError(err instanceof Error ? err.message : 'An error occurred while fetching conversations');
+      } finally {
+        setLoading(false);
+      }
     };
-
-    loadData();
+    
+    fetchConversations();
   }, []);
-
-  // Select first conversation if none selected
-  useEffect(() => {
-    if (!loading && conversations.length > 0 && !selectedConversation) {
-      setSelectedConversation(conversations[0].id);
-    }
-  }, [loading, conversations, selectedConversation]);
 
   // Scroll to bottom of messages when conversation changes
   useEffect(() => {
@@ -196,53 +84,115 @@ export default function AdminMessagesPage() {
   // Mark messages as read when conversation is selected
   useEffect(() => {
     if (selectedConversation) {
-      setConversations(conversations.map(conversation => {
-        if (conversation.id === selectedConversation) {
-          return {
-            ...conversation,
-            unreadCount: 0,
-            messages: conversation.messages.map(message => ({
-              ...message,
-              read: true,
-            })),
-          };
+      const markMessagesAsRead = async () => {
+        try {
+          await fetch(`/api/conversations/${selectedConversation}/read`, {
+            method: 'POST',
+          });
+          
+          // Update local state
+          setConversations(currentConversations => 
+            currentConversations.map(conversation => {
+              if (conversation.id === selectedConversation) {
+                return {
+                  ...conversation,
+                  unreadCount: 0,
+                  messages: conversation.messages.map(message => ({
+                    ...message,
+                    read: true,
+                  })),
+                };
+              }
+              return conversation;
+            })
+          );
+        } catch (err) {
+          console.error('Error marking messages as read:', err);
         }
-        return conversation;
-      }));
+      };
+      
+      markMessagesAsRead();
     }
   }, [selectedConversation]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!newMessage.trim() || !selectedConversation) return;
     
-    const now = new Date().toISOString();
-    
-    setConversations(conversations.map(conversation => {
-      if (conversation.id === selectedConversation) {
-        const newMsg: Message = {
-          id: `m${Date.now()}`,
+    try {
+      // Optimistically update UI
+      const now = new Date().toISOString();
+      const tempId = `temp-${Date.now()}`;
+      const sessionResponse = await fetch('/api/auth/session');
+      const session = await sessionResponse.json();
+      
+      const newMsg: Message = {
+        id: tempId,
+        content: newMessage,
+        sender: {
+          id: session?.user?.id || 'admin',
+          name: session?.user?.name || 'Admin',
+          role: 'ADMIN'
+        },
+        timestamp: now,
+        read: true,
+      };
+      
+      setConversations(currentConversations => 
+        currentConversations.map(conversation => {
+          if (conversation.id === selectedConversation) {
+            return {
+              ...conversation,
+              messages: [...conversation.messages, newMsg],
+              lastMessage: {
+                content: newMessage,
+                timestamp: now,
+                sender: 'ADMIN',
+              },
+            };
+          }
+          return conversation;
+        })
+      );
+      
+      setNewMessage('');
+      
+      // Send the message to the API
+      const response = await fetch(`/api/conversations/${selectedConversation}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           content: newMessage,
-          sender: 'admin',
-          timestamp: now,
-          read: true,
-        };
-        
-        return {
-          ...conversation,
-          messages: [...conversation.messages, newMsg],
-          lastMessage: {
-            content: newMessage,
-            timestamp: now,
-            sender: 'admin',
-          },
-        };
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to send message');
       }
-      return conversation;
-    }));
-    
-    setNewMessage('');
+      
+      const data = await response.json();
+      
+      // Update the message with the real ID
+      setConversations(currentConversations => 
+        currentConversations.map(conversation => {
+          if (conversation.id === selectedConversation) {
+            return {
+              ...conversation,
+              messages: conversation.messages.map(message => 
+                message.id === tempId ? data.message : message
+              ),
+            };
+          }
+          return conversation;
+        })
+      );
+    } catch (err) {
+      console.error('Error sending message:', err);
+      alert('Failed to send message. Please try again.');
+    }
   };
 
   const formatTime = (timestamp: string) => {
@@ -269,7 +219,7 @@ export default function AdminMessagesPage() {
   const filteredConversations = conversations.filter(conversation => 
     conversation.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     conversation.customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    conversation.project.toLowerCase().includes(searchTerm.toLowerCase())
+    (conversation.project?.name.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
   );
 
   const activeConversation = conversations.find(c => c.id === selectedConversation);
@@ -278,6 +228,24 @@ export default function AdminMessagesPage() {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sky-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+          <div className="bg-red-500/20 text-red-500 p-4 rounded-md">
+            {error}
+            <button 
+              className="ml-2 underline"
+              onClick={() => window.location.reload()}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -336,10 +304,10 @@ export default function AdminMessagesPage() {
                             </span>
                           </div>
                           <p className="text-xs text-slate-400 truncate">
-                            {conversation.project}
+                            {conversation.project?.name || 'No project'}
                           </p>
                           <p className="mt-1 text-xs text-slate-300 truncate">
-                            {conversation.lastMessage.sender === 'admin' ? 'You: ' : ''}
+                            {conversation.lastMessage.sender === 'ADMIN' ? 'You: ' : ''}
                             {conversation.lastMessage.content}
                           </p>
                         </div>
@@ -369,7 +337,7 @@ export default function AdminMessagesPage() {
                         <div className="flex items-center text-xs text-slate-400">
                           <span>{activeConversation.customer.email}</span>
                           <span className="mx-2">•</span>
-                          <span>{activeConversation.project}</span>
+                          <span>{activeConversation.project?.name || 'No project'}</span>
                         </div>
                       </div>
                       <div className="flex space-x-2">
@@ -393,11 +361,11 @@ export default function AdminMessagesPage() {
                       {activeConversation.messages.map((message) => (
                         <div
                           key={message.id}
-                          className={`flex ${message.sender === 'admin' ? 'justify-end' : 'justify-start'}`}
+                          className={`flex ${message.sender.role === 'ADMIN' ? 'justify-end' : 'justify-start'}`}
                         >
                           <div
                             className={`max-w-xs md:max-w-md rounded-lg px-4 py-2 ${
-                              message.sender === 'admin'
+                              message.sender.role === 'ADMIN'
                                 ? 'bg-sky-600 text-white'
                                 : 'bg-slate-700 text-white'
                             }`}

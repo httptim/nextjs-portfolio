@@ -10,9 +10,10 @@ interface Invoice {
   date: string;
   dueDate: string;
   amount: number;
-  status: 'paid' | 'unpaid' | 'overdue';
+  status: 'PAID' | 'UNPAID' | 'OVERDUE' | 'CANCELLED';
   project: string;
   items: {
+    id: string;
     description: string;
     quantity: number;
     rate: number;
@@ -33,108 +34,41 @@ export default function CustomerBilling() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Load billing data
+  // Fetch billing data from API
   useEffect(() => {
-    // In a real app, this would be API calls
-    const loadData = () => {
-      // Mock invoices
-      setInvoices([
-        {
-          id: 'inv1',
-          number: 'INV-2025-001',
-          date: '2025-03-01',
-          dueDate: '2025-03-15',
-          amount: 2500.00,
-          status: 'paid',
-          project: 'E-Commerce Website',
-          items: [
-            {
-              description: 'Website Development - Initial Phase',
-              quantity: 1,
-              rate: 2000.00,
-              amount: 2000.00,
-            },
-            {
-              description: 'UI/UX Design Services',
-              quantity: 5,
-              rate: 100.00,
-              amount: 500.00,
-            },
-          ],
-        },
-        {
-          id: 'inv2',
-          number: 'INV-2025-002',
-          date: '2025-03-20',
-          dueDate: '2025-04-05',
-          amount: 1800.00,
-          status: 'unpaid',
-          project: 'E-Commerce Website',
-          items: [
-            {
-              description: 'Backend Development',
-              quantity: 1,
-              rate: 1500.00,
-              amount: 1500.00,
-            },
-            {
-              description: 'Project Management',
-              quantity: 3,
-              rate: 100.00,
-              amount: 300.00,
-            },
-          ],
-        },
-        {
-          id: 'inv3',
-          number: 'INV-2025-003',
-          date: '2025-03-15',
-          dueDate: '2025-03-30',
-          amount: 1200.00,
-          status: 'overdue',
-          project: 'Mobile App UI/UX',
-          items: [
-            {
-              description: 'Mobile App Wireframing',
-              quantity: 1,
-              rate: 800.00,
-              amount: 800.00,
-            },
-            {
-              description: 'UI Design - App Screens',
-              quantity: 4,
-              rate: 100.00,
-              amount: 400.00,
-            },
-          ],
-        },
-      ]);
-      
-      // Mock payment methods
-      setPaymentMethods([
-        {
-          id: 'pm1',
-          type: 'credit_card',
-          last4: '4242',
-          expiry: '12/27',
-          name: 'Visa ending in 4242',
-          isDefault: true,
-        },
-        {
-          id: 'pm2',
-          type: 'paypal',
-          name: 'PayPal (customer@example.com)',
-          isDefault: false,
-        },
-      ]);
-      
-      setLoading(false);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch invoices
+        const invoicesResponse = await fetch('/api/invoices/customer');
+        
+        if (!invoicesResponse.ok) {
+          throw new Error('Failed to fetch invoices');
+        }
+        
+        const invoicesData = await invoicesResponse.json();
+        setInvoices(invoicesData.invoices);
+        
+        // Fetch payment methods
+        const paymentMethodsResponse = await fetch('/api/payment-methods');
+        
+        if (paymentMethodsResponse.ok) {
+          const paymentMethodsData = await paymentMethodsResponse.json();
+          setPaymentMethods(paymentMethodsData.paymentMethods);
+        }
+      } catch (err) {
+        console.error('Error fetching billing data:', err);
+        setError(err instanceof Error ? err.message : 'An error occurred while fetching billing data');
+      } finally {
+        setLoading(false);
+      }
     };
-
-    loadData();
+    
+    fetchData();
   }, []);
 
   const handleViewInvoice = (invoice: Invoice) => {
@@ -142,20 +76,84 @@ export default function CustomerBilling() {
     setIsModalOpen(true);
   };
 
+  const handlePayNow = async (invoiceId: string) => {
+    try {
+      // In a real app, this would redirect to a payment page or open a payment modal
+      alert(`This would redirect to payment processing for invoice ${invoiceId}`);
+    } catch (err) {
+      console.error('Error processing payment:', err);
+      alert('Failed to process payment. Please try again.');
+    }
+  };
+
+  const handleAddPaymentMethod = () => {
+    // In a real app, this would open a modal to add a new payment method
+    alert('This would open a form to add a new payment method');
+  };
+
+  const handleSetDefaultPaymentMethod = async (methodId: string) => {
+    try {
+      const response = await fetch(`/api/payment-methods/${methodId}/default`, {
+        method: 'PUT',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to set default payment method');
+      }
+      
+      // Update local state
+      setPaymentMethods(currentMethods => 
+        currentMethods.map(method => ({
+          ...method,
+          isDefault: method.id === methodId
+        }))
+      );
+    } catch (err) {
+      console.error('Error setting default payment method:', err);
+      alert('Failed to set default payment method. Please try again.');
+    }
+  };
+
+  const handleRemovePaymentMethod = async (methodId: string) => {
+    if (!confirm('Are you sure you want to remove this payment method?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/payment-methods/${methodId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to remove payment method');
+      }
+      
+      // Update local state
+      setPaymentMethods(currentMethods => 
+        currentMethods.filter(method => method.id !== methodId)
+      );
+    } catch (err) {
+      console.error('Error removing payment method:', err);
+      alert('Failed to remove payment method. Please try again.');
+    }
+  };
+
   const getTotalUnpaid = () => {
     return invoices
-      .filter(invoice => invoice.status === 'unpaid' || invoice.status === 'overdue')
+      .filter(invoice => invoice.status === 'UNPAID' || invoice.status === 'OVERDUE')
       .reduce((total, invoice) => total + invoice.amount, 0);
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'paid':
+      case 'PAID':
         return 'bg-green-500/20 text-green-500';
-      case 'unpaid':
+      case 'UNPAID':
         return 'bg-yellow-500/20 text-yellow-500';
-      case 'overdue':
+      case 'OVERDUE':
         return 'bg-red-500/20 text-red-500';
+      case 'CANCELLED':
+        return 'bg-slate-500/20 text-slate-400';
       default:
         return 'bg-slate-500/20 text-slate-300';
     }
@@ -186,10 +184,37 @@ export default function CustomerBilling() {
     }
   };
 
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sky-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+          <div className="bg-red-500/20 text-red-500 p-4 rounded-md">
+            {error}
+            <button 
+              className="ml-2 underline"
+              onClick={() => window.location.reload()}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -256,7 +281,15 @@ export default function CustomerBilling() {
               </div>
               <div className="ml-4">
                 <h3 className="text-sm font-medium text-slate-300">Last Payment</h3>
-                <p className="text-2xl font-semibold text-white">$2,500.00</p>
+                <p className="text-2xl font-semibold text-white">
+                  {invoices.filter(inv => inv.status === 'PAID').length > 0 ? 
+                    `$${Math.max(...invoices
+                      .filter(inv => inv.status === 'PAID')
+                      .map(inv => inv.amount)
+                    ).toFixed(2)}` : 
+                    'No payments'
+                  }
+                </p>
               </div>
             </div>
           </motion.div>
@@ -292,47 +325,58 @@ export default function CustomerBilling() {
                   </tr>
                 </thead>
                 <tbody className="bg-slate-800 divide-y divide-slate-700">
-                  {invoices.map((invoice) => (
-                    <motion.tr
-                      key={invoice.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3 }}
-                      className="hover:bg-slate-750"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-white">{invoice.number}</div>
+                  {invoices.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-4 text-center text-slate-400">
+                        No invoices found.
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-300">{invoice.project}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-300">{invoice.date}</div>
-                        <div className="text-xs text-slate-400">Due: {invoice.dueDate}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-white">${invoice.amount.toFixed(2)}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(invoice.status)}`}>
-                          {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => handleViewInvoice(invoice)}
-                          className="text-sky-400 hover:text-sky-300 mr-3"
-                        >
-                          View
-                        </button>
-                        {(invoice.status === 'unpaid' || invoice.status === 'overdue') && (
-                          <button className="text-green-400 hover:text-green-300">
-                            Pay Now
+                    </tr>
+                  ) : (
+                    invoices.map((invoice) => (
+                      <motion.tr
+                        key={invoice.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                        className="hover:bg-slate-750"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-white">{invoice.number}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-slate-300">{invoice.project}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-slate-300">{formatDate(invoice.date)}</div>
+                          <div className="text-xs text-slate-400">Due: {formatDate(invoice.dueDate)}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-white">${invoice.amount.toFixed(2)}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(invoice.status)}`}>
+                            {invoice.status.charAt(0) + invoice.status.slice(1).toLowerCase()}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => handleViewInvoice(invoice)}
+                            className="text-sky-400 hover:text-sky-300 mr-3"
+                          >
+                            View
                           </button>
-                        )}
-                      </td>
-                    </motion.tr>
-                  ))}
+                          {(invoice.status === 'UNPAID' || invoice.status === 'OVERDUE') && (
+                            <button 
+                              onClick={() => handlePayNow(invoice.id)}
+                              className="text-green-400 hover:text-green-300"
+                            >
+                              Pay Now
+                            </button>
+                          )}
+                        </td>
+                      </motion.tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -344,48 +388,63 @@ export default function CustomerBilling() {
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-medium text-white">Payment Methods</h2>
-              <button className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-md text-sm transition-colors">
+              <button 
+                onClick={handleAddPaymentMethod}
+                className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-md text-sm transition-colors"
+              >
                 Add Payment Method
               </button>
             </div>
             
             <div className="space-y-4">
-              {paymentMethods.map((method) => (
-                <motion.div
-                  key={method.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3 }}
-                  className="bg-slate-750 rounded-lg p-4 flex items-center justify-between"
-                >
-                  <div className="flex items-center">
-                    <div className="p-3 bg-slate-700 rounded-md text-slate-300">
-                      {getPaymentMethodIcon(method.type)}
+              {paymentMethods.length === 0 ? (
+                <div className="text-center py-6 text-slate-400">
+                  No payment methods added yet.
+                </div>
+              ) : (
+                paymentMethods.map((method) => (
+                  <motion.div
+                    key={method.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="bg-slate-750 rounded-lg p-4 flex items-center justify-between"
+                  >
+                    <div className="flex items-center">
+                      <div className="p-3 bg-slate-700 rounded-md text-slate-300">
+                        {getPaymentMethodIcon(method.type)}
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-white">{method.name}</div>
+                        {method.expiry && (
+                          <div className="text-xs text-slate-400">Expires: {method.expiry}</div>
+                        )}
+                        {method.isDefault && (
+                          <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-sky-500/20 text-sky-400">
+                            Default
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-white">{method.name}</div>
-                      {method.expiry && (
-                        <div className="text-xs text-slate-400">Expires: {method.expiry}</div>
+                    <div className="flex space-x-2">
+                      {!method.isDefault && (
+                        <button 
+                          onClick={() => handleSetDefaultPaymentMethod(method.id)}
+                          className="text-sky-400 hover:text-sky-300 text-sm"
+                        >
+                          Set as Default
+                        </button>
                       )}
-                      {method.isDefault && (
-                        <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-sky-500/20 text-sky-400">
-                          Default
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    {!method.isDefault && (
-                      <button className="text-sky-400 hover:text-sky-300 text-sm">
-                        Set as Default
+                      <button 
+                        onClick={() => handleRemovePaymentMethod(method.id)}
+                        className="text-red-400 hover:text-red-300 text-sm"
+                      >
+                        Remove
                       </button>
-                    )}
-                    <button className="text-red-400 hover:text-red-300 text-sm">
-                      Remove
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
+                    </div>
+                  </motion.div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -418,16 +477,16 @@ export default function CustomerBilling() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <h4 className="text-xs font-medium text-slate-400 uppercase mb-1">Invoice Date</h4>
-                    <p className="text-sm text-white">{selectedInvoice.date}</p>
+                    <p className="text-sm text-white">{formatDate(selectedInvoice.date)}</p>
                   </div>
                   <div>
                     <h4 className="text-xs font-medium text-slate-400 uppercase mb-1">Due Date</h4>
-                    <p className="text-sm text-white">{selectedInvoice.dueDate}</p>
+                    <p className="text-sm text-white">{formatDate(selectedInvoice.dueDate)}</p>
                   </div>
                   <div>
                     <h4 className="text-xs font-medium text-slate-400 uppercase mb-1">Status</h4>
                     <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(selectedInvoice.status)}`}>
-                      {selectedInvoice.status.charAt(0).toUpperCase() + selectedInvoice.status.slice(1)}
+                      {selectedInvoice.status.charAt(0) + selectedInvoice.status.slice(1).toLowerCase()}
                     </span>
                   </div>
                 </div>
@@ -453,8 +512,8 @@ export default function CustomerBilling() {
                     </tr>
                   </thead>
                   <tbody className="bg-slate-750 divide-y divide-slate-700">
-                    {selectedInvoice.items.map((item, index) => (
-                      <tr key={index}>
+                    {selectedInvoice.items.map((item) => (
+                      <tr key={item.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
                           {item.description}
                         </td>
@@ -490,8 +549,11 @@ export default function CustomerBilling() {
                 >
                   Close
                 </button>
-                {(selectedInvoice.status === 'unpaid' || selectedInvoice.status === 'overdue') && (
-                  <button className="px-4 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors">
+                {(selectedInvoice.status === 'UNPAID' || selectedInvoice.status === 'OVERDUE') && (
+                  <button 
+                    onClick={() => handlePayNow(selectedInvoice.id)}
+                    className="px-4 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors"
+                  >
                     Pay Now
                   </button>
                 )}

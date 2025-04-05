@@ -10,8 +10,8 @@ interface Task {
   description: string;
   projectId: string;
   projectName: string;
-  priority: 'low' | 'medium' | 'high';
-  status: 'todo' | 'in-progress' | 'review' | 'completed';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  status: 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'COMPLETED';
   dueDate: string;
   createdAt: string;
   assignedTo: string;
@@ -20,97 +20,56 @@ interface Task {
 export default function CustomerTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'todo' | 'in-progress' | 'review' | 'completed'>('all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'card' | 'list'>('list');
+  const [projects, setProjects] = useState<{id: string, name: string}[]>([]);
 
-  // Load tasks data
+  // Fetch tasks data from API
   useEffect(() => {
-    // In a real app, this would be an API call
-    const loadTasks = () => {
-      setTasks([
-        {
-          id: 't1',
-          title: 'Design homepage mockup',
-          description: 'Create a modern homepage design with hero section, featured products, and testimonials.',
-          projectId: 'p1',
-          projectName: 'E-Commerce Website',
-          priority: 'high',
-          status: 'in-progress',
-          dueDate: '2025-04-10',
-          createdAt: '2025-04-01',
-          assignedTo: 'Designer',
-        },
-        {
-          id: 't2',
-          title: 'Implement user authentication',
-          description: 'Set up user registration, login, and password recovery functionality.',
-          projectId: 'p1',
-          projectName: 'E-Commerce Website',
-          priority: 'high',
-          status: 'todo',
-          dueDate: '2025-04-15',
-          createdAt: '2025-04-01',
-          assignedTo: 'Developer',
-        },
-        {
-          id: 't3',
-          title: 'Design mobile app wireframes',
-          description: 'Create wireframes for all screens of the mobile application.',
-          projectId: 'p2',
-          projectName: 'Mobile App UI/UX',
-          priority: 'medium',
-          status: 'todo',
-          dueDate: '2025-04-12',
-          createdAt: '2025-03-30',
-          assignedTo: 'Designer',
-        },
-        {
-          id: 't4',
-          title: 'Set up product database schema',
-          description: 'Design and implement database schema for products, categories, and inventory.',
-          projectId: 'p1',
-          projectName: 'E-Commerce Website',
-          priority: 'medium',
-          status: 'completed',
-          dueDate: '2025-04-05',
-          createdAt: '2025-03-25',
-          assignedTo: 'Developer',
-        },
-        {
-          id: 't5',
-          title: 'Implement checkout process',
-          description: 'Create multi-step checkout process with address collection and payment processing.',
-          projectId: 'p1',
-          projectName: 'E-Commerce Website',
-          priority: 'high',
-          status: 'review',
-          dueDate: '2025-04-20',
-          createdAt: '2025-04-05',
-          assignedTo: 'Developer',
-        },
-      ]);
-      setLoading(false);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch tasks
+        const tasksResponse = await fetch('/api/tasks/customer');
+        
+        if (!tasksResponse.ok) {
+          throw new Error('Failed to fetch tasks');
+        }
+        
+        const tasksData = await tasksResponse.json();
+        setTasks(tasksData.tasks);
+        
+        // Extract unique projects for filter
+        const uniqueProjects = Array.from(
+          new Set(tasksData.tasks.map((task: Task) => task.projectId))
+        ).map(projectId => {
+          const project = tasksData.tasks.find((task: Task) => task.projectId === projectId);
+          return {
+            id: projectId as string,
+            name: project ? project.projectName : 'Unknown Project'
+          };
+        });
+        
+        setProjects(uniqueProjects);
+      } catch (err) {
+        console.error('Error fetching tasks data:', err);
+        setError(err instanceof Error ? err.message : 'An error occurred while fetching tasks');
+      } finally {
+        setLoading(false);
+      }
     };
-
-    loadTasks();
+    
+    fetchData();
   }, []);
-
-  // Get unique projects for filter
-  const projects = [...new Set(tasks.map(task => task.projectId))].map(projectId => {
-    const project = tasks.find(task => task.projectId === projectId);
-    return {
-      id: projectId,
-      name: project ? project.projectName : 'Unknown Project',
-    };
-  });
 
   // Filter tasks
   const filteredTasks = tasks
     .filter(task => filter === 'all' || task.status === filter)
-    .filter(task => priorityFilter === 'all' || task.priority === priorityFilter)
+    .filter(task => priorityFilter === 'all' || task.priority.toLowerCase() === priorityFilter)
     .filter(task => projectFilter === 'all' || task.projectId === projectFilter)
     .filter(task => 
       task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -119,13 +78,13 @@ export default function CustomerTasks() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'todo':
+      case 'TODO':
         return 'bg-slate-500/20 text-slate-300';
-      case 'in-progress':
+      case 'IN_PROGRESS':
         return 'bg-blue-500/20 text-blue-500';
-      case 'review':
+      case 'REVIEW':
         return 'bg-yellow-500/20 text-yellow-500';
-      case 'completed':
+      case 'COMPLETED':
         return 'bg-green-500/20 text-green-500';
       default:
         return 'bg-slate-500/20 text-slate-300';
@@ -134,14 +93,33 @@ export default function CustomerTasks() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'low':
+      case 'LOW':
         return 'bg-green-500/20 text-green-500';
-      case 'medium':
+      case 'MEDIUM':
         return 'bg-yellow-500/20 text-yellow-500';
-      case 'high':
+      case 'HIGH':
         return 'bg-red-500/20 text-red-500';
       default:
         return 'bg-slate-500/20 text-slate-300';
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const getStatusDisplay = (status: string): string => {
+    switch (status) {
+      case 'TODO': return 'To Do';
+      case 'IN_PROGRESS': return 'In Progress';
+      case 'REVIEW': return 'In Review';
+      case 'COMPLETED': return 'Completed';
+      default: return status;
     }
   };
 
@@ -149,6 +127,24 @@ export default function CustomerTasks() {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sky-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+          <div className="bg-red-500/20 text-red-500 p-4 rounded-md">
+            {error}
+            <button 
+              className="ml-2 underline"
+              onClick={() => window.location.reload()}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -295,18 +291,16 @@ export default function CustomerTasks() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(task.priority)}`}>
-                            {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                            {task.priority.charAt(0) + task.priority.slice(1).toLowerCase()}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(task.status)}`}>
-                            {task.status === 'todo' ? 'To Do' : 
-                             task.status === 'in-progress' ? 'In Progress' :
-                             task.status === 'review' ? 'In Review' : 'Completed'}
+                            {getStatusDisplay(task.status)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
-                          {task.dueDate}
+                          {formatDate(task.dueDate)}
                         </td>
                       </motion.tr>
                     ))}
@@ -327,7 +321,7 @@ export default function CustomerTasks() {
                       <div className="flex justify-between items-start mb-3">
                         <h3 className="text-md font-medium text-white">{task.title}</h3>
                         <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(task.priority)}`}>
-                          {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                          {task.priority.charAt(0) + task.priority.slice(1).toLowerCase()}
                         </span>
                       </div>
                       
@@ -336,14 +330,12 @@ export default function CustomerTasks() {
                       <div className="text-xs text-slate-400 mb-3">
                         <div>Project: {task.projectName}</div>
                         <div>Assigned to: {task.assignedTo}</div>
-                        <div>Due date: {task.dueDate}</div>
+                        <div>Due date: {formatDate(task.dueDate)}</div>
                       </div>
                       
                       <div className="flex justify-between items-center">
                         <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(task.status)}`}>
-                          {task.status === 'todo' ? 'To Do' : 
-                           task.status === 'in-progress' ? 'In Progress' :
-                           task.status === 'review' ? 'In Review' : 'Completed'}
+                          {getStatusDisplay(task.status)}
                         </span>
                         <button className="text-xs text-sky-400 hover:text-sky-300">
                           View Details

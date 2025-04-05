@@ -10,7 +10,7 @@ interface Invoice {
   date: string;
   dueDate: string;
   amount: number;
-  status: 'paid' | 'unpaid' | 'overdue';
+  status: 'PAID' | 'UNPAID' | 'OVERDUE' | 'CANCELLED';
   customer: {
     id: string;
     name: string;
@@ -37,119 +37,69 @@ export default function AdminBillingPage() {
     overdueInvoices: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'paid' | 'unpaid' | 'overdue'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Load billing data
+  // Fetch billing data
   useEffect(() => {
-    // In a real app, this would be API calls
-    const loadData = () => {
-      // Mock invoices
-      const mockInvoices: Invoice[] = [
-        {
-          id: 'inv1',
-          number: 'INV-2025-001',
-          date: '2025-03-01',
-          dueDate: '2025-03-15',
-          amount: 2500.00,
-          status: 'paid',
-          customer: {
-            id: 'c1',
-            name: 'John Smith',
-            email: 'john.smith@example.com',
-          },
-          project: 'E-Commerce Website',
-        },
-        {
-          id: 'inv2',
-          number: 'INV-2025-002',
-          date: '2025-03-20',
-          dueDate: '2025-04-05',
-          amount: 1800.00,
-          status: 'unpaid',
-          customer: {
-            id: 'c1',
-            name: 'John Smith',
-            email: 'john.smith@example.com',
-          },
-          project: 'E-Commerce Website',
-        },
-        {
-          id: 'inv3',
-          number: 'INV-2025-003',
-          date: '2025-03-15',
-          dueDate: '2025-03-30',
-          amount: 1200.00,
-          status: 'overdue',
-          customer: {
-            id: 'c2',
-            name: 'Emma Johnson',
-            email: 'emma.johnson@example.com',
-          },
-          project: 'Mobile App UI/UX',
-        },
-        {
-          id: 'inv4',
-          number: 'INV-2025-004',
-          date: '2025-02-15',
-          dueDate: '2025-03-01',
-          amount: 3500.00,
-          status: 'paid',
-          customer: {
-            id: 'c3',
-            name: 'Michael Brown',
-            email: 'michael.brown@example.com',
-          },
-          project: 'CRM System',
-        },
-        {
-          id: 'inv5',
-          number: 'INV-2025-005',
-          date: '2025-03-25',
-          dueDate: '2025-04-10',
-          amount: 2200.00,
-          status: 'unpaid',
-          customer: {
-            id: 'c3',
-            name: 'Michael Brown',
-            email: 'michael.brown@example.com',
-          },
-          project: 'CRM System',
-        },
-      ];
-      
-      setInvoices(mockInvoices);
-      
-      // Calculate billing stats
-      const totalRevenue = mockInvoices.reduce((total, invoice) => 
-        invoice.status === 'paid' ? total + invoice.amount : total, 0);
-      
-      const outstandingAmount = mockInvoices.reduce((total, invoice) => 
-        invoice.status !== 'paid' ? total + invoice.amount : total, 0);
-      
-      const paidInvoices = mockInvoices.filter(invoice => invoice.status === 'paid').length;
-      const unpaidInvoices = mockInvoices.filter(invoice => invoice.status === 'unpaid').length;
-      const overdueInvoices = mockInvoices.filter(invoice => invoice.status === 'overdue').length;
-      
-      setStats({
-        totalRevenue,
-        outstandingAmount,
-        paidInvoices,
-        unpaidInvoices,
-        overdueInvoices,
-      });
-      
-      setLoading(false);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch invoices
+        const invoicesResponse = await fetch('/api/invoices');
+        
+        if (!invoicesResponse.ok) {
+          throw new Error('Failed to fetch invoices');
+        }
+        
+        const invoicesData = await invoicesResponse.json();
+        setInvoices(invoicesData.invoices);
+        
+        // Fetch billing stats
+        const statsResponse = await fetch('/api/invoices/stats');
+        
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json();
+          setStats(statsData);
+        } else {
+          // Calculate stats from invoices if the endpoint is not available
+          const paidInvoices = invoicesData.invoices.filter((inv: Invoice) => inv.status === 'PAID').length;
+          const unpaidInvoices = invoicesData.invoices.filter((inv: Invoice) => inv.status === 'UNPAID').length;
+          const overdueInvoices = invoicesData.invoices.filter((inv: Invoice) => inv.status === 'OVERDUE').length;
+          
+          const totalRevenue = invoicesData.invoices
+            .filter((inv: Invoice) => inv.status === 'PAID')
+            .reduce((sum: number, inv: Invoice) => sum + inv.amount, 0);
+            
+          const outstandingAmount = invoicesData.invoices
+            .filter((inv: Invoice) => inv.status === 'UNPAID' || inv.status === 'OVERDUE')
+            .reduce((sum: number, inv: Invoice) => sum + inv.amount, 0);
+          
+          setStats({
+            totalRevenue,
+            outstandingAmount,
+            paidInvoices,
+            unpaidInvoices,
+            overdueInvoices,
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching billing data:', err);
+        setError(err instanceof Error ? err.message : 'An error occurred while fetching billing data');
+      } finally {
+        setLoading(false);
+      }
     };
-
-    loadData();
+    
+    fetchData();
   }, []);
 
   const handleCreateInvoice = () => {
-    // This would open a form to create a new invoice
-    alert('This would open a form to create a new invoice');
+    // In a real app, redirect to invoice creation page
+    window.location.href = '/dashboard/admin/billing/create';
   };
 
   const handleViewInvoice = (invoice: Invoice) => {
@@ -157,20 +107,92 @@ export default function AdminBillingPage() {
     setIsModalOpen(true);
   };
 
-  const handleMarkAsPaid = (id: string) => {
-    setInvoices(invoices.map(invoice => 
-      invoice.id === id ? { ...invoice, status: 'paid' as const } : invoice
-    ));
+  const handleMarkAsPaid = async (id: string) => {
+    try {
+      const response = await fetch(`/api/invoices/${id}/mark-paid`, {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to mark invoice as paid');
+      }
+      
+      // Update local state
+      setInvoices(invoices.map(invoice => 
+        invoice.id === id ? { ...invoice, status: 'PAID' as const } : invoice
+      ));
+      
+      // Update stats
+      setStats({
+        ...stats,
+        paidInvoices: stats.paidInvoices + 1,
+        unpaidInvoices: stats.unpaidInvoices - 1,
+        totalRevenue: stats.totalRevenue + (invoices.find(inv => inv.id === id)?.amount || 0),
+        outstandingAmount: stats.outstandingAmount - (invoices.find(inv => inv.id === id)?.amount || 0),
+      });
+      
+      // Close modal if open
+      if (selectedInvoice?.id === id) {
+        setIsModalOpen(false);
+        setSelectedInvoice(null);
+      }
+    } catch (err) {
+      console.error('Error marking invoice as paid:', err);
+      alert(err instanceof Error ? err.message : 'An error occurred while marking invoice as paid');
+    }
+  };
+
+  const handleDeleteInvoice = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this invoice?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/invoices/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete invoice');
+      }
+      
+      // Update local state
+      const invoiceToDelete = invoices.find(inv => inv.id === id);
+      setInvoices(invoices.filter(invoice => invoice.id !== id));
+      
+      // Update stats if necessary
+      if (invoiceToDelete) {
+        if (invoiceToDelete.status === 'PAID') {
+          setStats({
+            ...stats,
+            paidInvoices: stats.paidInvoices - 1,
+            totalRevenue: stats.totalRevenue - invoiceToDelete.amount,
+          });
+        } else {
+          setStats({
+            ...stats,
+            unpaidInvoices: invoiceToDelete.status === 'UNPAID' ? stats.unpaidInvoices - 1 : stats.unpaidInvoices,
+            overdueInvoices: invoiceToDelete.status === 'OVERDUE' ? stats.overdueInvoices - 1 : stats.overdueInvoices,
+            outstandingAmount: stats.outstandingAmount - invoiceToDelete.amount,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error deleting invoice:', err);
+      alert(err instanceof Error ? err.message : 'An error occurred while deleting invoice');
+    }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'paid':
+      case 'PAID':
         return 'bg-green-500/20 text-green-500';
-      case 'unpaid':
+      case 'UNPAID':
         return 'bg-yellow-500/20 text-yellow-500';
-      case 'overdue':
+      case 'OVERDUE':
         return 'bg-red-500/20 text-red-500';
+      case 'CANCELLED':
+        return 'bg-slate-500/20 text-slate-400';
       default:
         return 'bg-slate-500/20 text-slate-300';
     }
@@ -178,17 +200,44 @@ export default function AdminBillingPage() {
 
   // Filter and search invoices
   const filteredInvoices = invoices
-    .filter(invoice => filter === 'all' || invoice.status === filter)
+    .filter(invoice => filter === 'all' || invoice.status.toLowerCase() === filter)
     .filter(invoice => 
       invoice.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invoice.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invoice.project.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sky-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+          <div className="bg-red-500/20 text-red-500 p-4 rounded-md">
+            {error}
+            <button 
+              className="ml-2 underline"
+              onClick={() => window.location.reload()}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -399,15 +448,15 @@ export default function AdminBillingPage() {
                           <div className="text-sm text-slate-300">{invoice.project}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-slate-300">{invoice.date}</div>
-                          <div className="text-xs text-slate-400">Due: {invoice.dueDate}</div>
+                          <div className="text-sm text-slate-300">{formatDate(invoice.date)}</div>
+                          <div className="text-xs text-slate-400">Due: {formatDate(invoice.dueDate)}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-white">${invoice.amount.toFixed(2)}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(invoice.status)}`}>
-                            {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                            {invoice.status.charAt(0) + invoice.status.slice(1).toLowerCase()}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -417,7 +466,7 @@ export default function AdminBillingPage() {
                           >
                             View
                           </button>
-                          {invoice.status !== 'paid' && (
+                          {invoice.status !== 'PAID' && (
                             <button
                               onClick={() => handleMarkAsPaid(invoice.id)}
                               className="text-green-400 hover:text-green-300 mr-3"
@@ -426,6 +475,7 @@ export default function AdminBillingPage() {
                             </button>
                           )}
                           <button
+                            onClick={() => handleDeleteInvoice(invoice.id)}
                             className="text-red-400 hover:text-red-300"
                           >
                             Delete
@@ -480,16 +530,16 @@ export default function AdminBillingPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
                   <div>
                     <h4 className="text-xs font-medium text-slate-400 uppercase mb-1">Invoice Date</h4>
-                    <p className="text-sm text-white">{selectedInvoice.date}</p>
+                    <p className="text-sm text-white">{formatDate(selectedInvoice.date)}</p>
                   </div>
                   <div>
                     <h4 className="text-xs font-medium text-slate-400 uppercase mb-1">Due Date</h4>
-                    <p className="text-sm text-white">{selectedInvoice.dueDate}</p>
+                    <p className="text-sm text-white">{formatDate(selectedInvoice.dueDate)}</p>
                   </div>
                   <div>
                     <h4 className="text-xs font-medium text-slate-400 uppercase mb-1">Status</h4>
                     <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(selectedInvoice.status)}`}>
-                      {selectedInvoice.status.charAt(0).toUpperCase() + selectedInvoice.status.slice(1)}
+                      {selectedInvoice.status.charAt(0) + selectedInvoice.status.slice(1).toLowerCase()}
                     </span>
                   </div>
                 </div>
@@ -507,12 +557,9 @@ export default function AdminBillingPage() {
                 >
                   Close
                 </button>
-                {selectedInvoice.status !== 'paid' && (
+                {selectedInvoice.status !== 'PAID' && (
                   <button
-                    onClick={() => {
-                      handleMarkAsPaid(selectedInvoice.id);
-                      setIsModalOpen(false);
-                    }}
+                    onClick={() => handleMarkAsPaid(selectedInvoice.id)}
                     className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
                   >
                     Mark as Paid
@@ -529,4 +576,3 @@ export default function AdminBillingPage() {
     </div>
   );
 }
-

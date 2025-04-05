@@ -29,200 +29,173 @@ export default function CustomerChat() {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Load conversations data
+  // Load conversations data from API
   useEffect(() => {
-    // In a real app, this would be an API call
-    const loadConversations = () => {
-      const mockConversations: Conversation[] = [
-        {
-          id: 'c1',
-          name: 'Project Support',
-          project: 'E-Commerce Website',
-          unread: 2,
-          lastMessage: {
-            content: 'Hi, I was thinking about the homepage design...',
-            timestamp: '2025-04-03T10:30:00',
-          },
-          messages: [
-            {
-              id: 'm1',
-              content: 'Hello! How can I help you with the E-Commerce Website project?',
-              sender: 'admin',
-              timestamp: '2025-04-02T09:00:00',
-              read: true,
-            },
-            {
-              id: 'm2',
-              content: 'I have a question about the product listing page layout.',
-              sender: 'customer',
-              timestamp: '2025-04-02T09:05:00',
-              read: true,
-            },
-            {
-              id: 'm3',
-              content: 'Of course! What specifically would you like to know about the layout?',
-              sender: 'admin',
-              timestamp: '2025-04-02T09:10:00',
-              read: true,
-            },
-            {
-              id: 'm4',
-              content: 'I was wondering if we could add a filtering sidebar for categories and price ranges.',
-              sender: 'customer',
-              timestamp: '2025-04-02T09:15:00',
-              read: true,
-            },
-            {
-              id: 'm5',
-              content: 'Absolutely! That\'s a great idea. I\'ll create a mockup showing how that could work and share it with you tomorrow.',
-              sender: 'admin',
-              timestamp: '2025-04-02T09:20:00',
-              read: true,
-            },
-            {
-              id: 'm6',
-              content: 'Thank you! I\'m looking forward to seeing it.',
-              sender: 'customer',
-              timestamp: '2025-04-02T09:25:00',
-              read: true,
-            },
-            {
-              id: 'm7',
-              content: 'Hi, I was thinking about the homepage design and wondering if we could schedule a quick call to discuss some ideas?',
-              sender: 'customer',
-              timestamp: '2025-04-03T10:30:00',
-              read: false,
-            },
-            {
-              id: 'm8',
-              content: 'I\'ve also been considering the mobile responsiveness of the site.',
-              sender: 'customer',
-              timestamp: '2025-04-03T10:35:00',
-              read: false,
-            },
-          ],
-        },
-        {
-          id: 'c2',
-          name: 'Billing Support',
-          project: 'General',
-          unread: 0,
-          lastMessage: {
-            content: 'Your invoice has been processed successfully.',
-            timestamp: '2025-04-01T14:20:00',
-          },
-          messages: [
-            {
-              id: 'm1',
-              content: 'Hello! I wanted to let you know that your invoice #INV-2023-001 has been issued.',
-              sender: 'admin',
-              timestamp: '2025-04-01T14:00:00',
-              read: true,
-            },
-            {
-              id: 'm2',
-              content: 'Thanks for letting me know. I\'ll process the payment right away.',
-              sender: 'customer',
-              timestamp: '2025-04-01T14:10:00',
-              read: true,
-            },
-            {
-              id: 'm3',
-              content: 'Your invoice has been processed successfully.',
-              sender: 'admin',
-              timestamp: '2025-04-01T14:20:00',
-              read: true,
-            },
-          ],
-        },
-        {
-          id: 'c3',
-          name: 'Mobile App Design',
-          project: 'Mobile App UI/UX',
-          unread: 0,
-          lastMessage: {
-            content: 'I\'ve uploaded the latest wireframes for review.',
-            timestamp: '2025-03-28T16:45:00',
-          },
-          messages: [
-            {
-              id: 'm1',
-              content: 'I\'ve uploaded the latest wireframes for review.',
-              sender: 'admin',
-              timestamp: '2025-03-28T16:45:00',
-              read: true,
-            },
-          ],
-        },
-      ];
-      
-      setConversations(mockConversations);
-      setSelectedConversation(mockConversations[0].id); // Select the first conversation by default
-      setLoading(false);
+    const fetchConversations = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch('/api/conversations/customer');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch conversations');
+        }
+        
+        const data = await response.json();
+        setConversations(data.conversations);
+        
+        // Select the first conversation by default if there are any
+        if (data.conversations.length > 0 && !selectedConversation) {
+          setSelectedConversation(data.conversations[0].id);
+        }
+      } catch (err) {
+        console.error('Error fetching conversations:', err);
+        setError(err instanceof Error ? err.message : 'An error occurred while fetching conversations');
+      } finally {
+        setLoading(false);
+      }
     };
-
-    loadConversations();
+    
+    fetchConversations();
   }, []);
 
-  // Scroll to bottom of messages
+  // Scroll to bottom of messages when conversation changes
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [selectedConversation, conversations]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  // Mark messages as read when conversation is selected
+  useEffect(() => {
+    if (selectedConversation) {
+      const markMessagesAsRead = async () => {
+        try {
+          await fetch(`/api/conversations/${selectedConversation}/read`, {
+            method: 'POST',
+          });
+          
+          // Update local state
+          setConversations(currentConversations => 
+            currentConversations.map(conversation => {
+              if (conversation.id === selectedConversation) {
+                return {
+                  ...conversation,
+                  unread: 0,
+                  messages: conversation.messages.map(message => ({
+                    ...message,
+                    read: true,
+                  })),
+                };
+              }
+              return conversation;
+            })
+          );
+        } catch (err) {
+          console.error('Error marking messages as read:', err);
+        }
+      };
+      
+      markMessagesAsRead();
+    }
+  }, [selectedConversation]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!newMessage.trim() || !selectedConversation) return;
     
-    const updatedConversations = conversations.map(conversation => {
-      if (conversation.id === selectedConversation) {
-        const newMsg: Message = {
-          id: `m${Date.now()}`,
+    try {
+      // Optimistically update UI
+      const now = new Date().toISOString();
+      const tempId = `temp-${Date.now()}`;
+      
+      const newMsg: Message = {
+        id: tempId,
+        content: newMessage,
+        sender: 'customer',
+        timestamp: now,
+        read: false,
+      };
+      
+      setConversations(currentConversations => 
+        currentConversations.map(conversation => {
+          if (conversation.id === selectedConversation) {
+            return {
+              ...conversation,
+              messages: [...conversation.messages, newMsg],
+              lastMessage: {
+                content: newMessage,
+                timestamp: now,
+              },
+            };
+          }
+          return conversation;
+        })
+      );
+      
+      setNewMessage('');
+      
+      // Send the message to the API
+      const response = await fetch(`/api/conversations/${selectedConversation}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           content: newMessage,
-          sender: 'customer',
-          timestamp: new Date().toISOString(),
-          read: false,
-        };
-        
-        return {
-          ...conversation,
-          messages: [...conversation.messages, newMsg],
-          lastMessage: {
-            content: newMessage,
-            timestamp: new Date().toISOString(),
-          },
-        };
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to send message');
       }
-      return conversation;
-    });
-    
-    setConversations(updatedConversations);
-    setNewMessage('');
+      
+      const data = await response.json();
+      
+      // Update the message with the real ID
+      setConversations(currentConversations => 
+        currentConversations.map(conversation => {
+          if (conversation.id === selectedConversation) {
+            return {
+              ...conversation,
+              messages: conversation.messages.map(message => 
+                message.id === tempId ? data.message : message
+              ),
+            };
+          }
+          return conversation;
+        })
+      );
+    } catch (err) {
+      console.error('Error sending message:', err);
+      alert('Failed to send message. Please try again.');
+    }
   };
 
-  const formatMessageTime = (timestamp: string) => {
+  const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const formatConversationTime = (timestamp: string) => {
+  const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     
     if (date.toDateString() === now.toDateString()) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return 'Today';
     } else if (date.toDateString() === yesterday.toDateString()) {
       return 'Yesterday';
     } else {
       return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     }
   };
+
+  const activeConversation = conversations.find(c => c.id === selectedConversation);
 
   if (loading) {
     return (
@@ -232,7 +205,23 @@ export default function CustomerChat() {
     );
   }
 
-  const activeConversation = conversations.find(c => c.id === selectedConversation);
+  if (error) {
+    return (
+      <div className="py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+          <div className="bg-red-500/20 text-red-500 p-4 rounded-md">
+            {error}
+            <button 
+              className="ml-2 underline"
+              onClick={() => window.location.reload()}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="py-6">
@@ -262,39 +251,45 @@ export default function CustomerChat() {
               </div>
 
               <div>
-                {conversations.map((conversation) => (
-                  <div
-                    key={conversation.id}
-                    onClick={() => setSelectedConversation(conversation.id)}
-                    className={`px-4 py-3 border-b border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors ${
-                      selectedConversation === conversation.id ? 'bg-slate-700' : ''
-                    }`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between">
-                          <h3 className="text-sm font-medium text-white truncate">
-                            {conversation.name}
-                          </h3>
-                          <span className="text-xs text-slate-400">
-                            {formatConversationTime(conversation.lastMessage.timestamp)}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400 truncate">
-                          {conversation.project}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-300 truncate">
-                          {conversation.lastMessage.content}
-                        </p>
-                      </div>
-                      {conversation.unread > 0 && (
-                        <div className="ml-2 bg-sky-500 rounded-full w-5 h-5 flex items-center justify-center">
-                          <span className="text-xs text-white font-medium">{conversation.unread}</span>
-                        </div>
-                      )}
-                    </div>
+                {conversations.length === 0 ? (
+                  <div className="text-center py-6 text-slate-400">
+                    No conversations found.
                   </div>
-                ))}
+                ) : (
+                  conversations.map((conversation) => (
+                    <div
+                      key={conversation.id}
+                      onClick={() => setSelectedConversation(conversation.id)}
+                      className={`px-4 py-3 border-b border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors ${
+                        selectedConversation === conversation.id ? 'bg-slate-700' : ''
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between">
+                            <h3 className="text-sm font-medium text-white truncate">
+                              {conversation.name}
+                            </h3>
+                            <span className="text-xs text-slate-400">
+                              {formatDate(conversation.lastMessage.timestamp)}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400 truncate">
+                            {conversation.project}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-300 truncate">
+                            {conversation.lastMessage.content}
+                          </p>
+                        </div>
+                        {conversation.unread > 0 && (
+                          <div className="ml-2 bg-sky-500 rounded-full w-5 h-5 flex items-center justify-center">
+                            <span className="text-xs text-white font-medium">{conversation.unread}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -340,7 +335,7 @@ export default function CustomerChat() {
                           >
                             <div className="text-sm">{message.content}</div>
                             <div className="mt-1 text-xs text-right opacity-70">
-                              {formatMessageTime(message.timestamp)}
+                              {formatTime(message.timestamp)}
                             </div>
                           </div>
                         </div>
@@ -388,4 +383,3 @@ export default function CustomerChat() {
     </div>
   );
 }
-
