@@ -126,34 +126,39 @@ export default function Contact() {
     if (!validateForm()) return;
     
     setIsSubmitting(true);
+    setSubmitSuccess(null); // Reset submit status
     
-    // Create submission object
-    const submission: ContactSubmission = {
-      id: Date.now().toString(),
-      name: formState.name,
-      email: formState.email,
-      message: formState.message,
-      date: new Date().toISOString(),
-      read: false,
-    };
-    
-    // Simulate form submission
     try {
-      // In a real app, this would be an API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      // Save to localStorage for demo purposes
-      const saveSuccess = saveSubmissionToLocalStorage(submission);
-      
-      if (saveSuccess) {
-        setSubmitSuccess(true);
-        setFormState({ name: '', email: '', message: '' });
-      } else {
-        setSubmitSuccess(false);
+      // Send data to the API endpoint
+      const response = await fetch('/api/contact-submissions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formState), // Send name, email, message
+      });
+
+      if (!response.ok) {
+        // Try to get error message from API response
+        let errorMessage = 'Submission failed. Please try again later.';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch (parseError) {
+          // Keep default error message if response isn't JSON
+        }
+        throw new Error(errorMessage);
       }
+
+      // Success!
+      setSubmitSuccess(true);
+      setFormState({ name: '', email: '', message: '' }); // Clear form
+
     } catch (error) {
       setSubmitSuccess(false);
-      console.error('Error submitting form:', error);
+      console.error('Error submitting contact form:', error);
+      // Display error message to user (optional, could use state)
+      alert(error instanceof Error ? error.message : 'An unexpected error occurred.');
     } finally {
       setIsSubmitting(false);
     }

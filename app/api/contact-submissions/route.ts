@@ -47,4 +47,52 @@ export async function GET(request: NextRequest) {
 
 // DELETE handler REMOVED from this static route file
 
-// POST handler REMOVED from this static route file 
+// POST handler to create a new contact submission
+export async function POST(request: NextRequest) {
+  try {
+    console.log('Contact Submissions API POST called');
+    const body = await request.json();
+
+    // Validate required fields
+    if (!body.name || !body.email || !body.message) {
+      return NextResponse.json(
+        { error: 'Missing required fields', details: 'Name, email, and message are required.' },
+        { status: 400 }
+      );
+    }
+    
+    // Basic email validation (consider a more robust library if needed)
+    if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(body.email)) {
+       return NextResponse.json(
+        { error: 'Invalid Email', details: 'Please provide a valid email address.' },
+        { status: 400 }
+      );
+    }
+
+    // Optional: Try to link to an existing user based on email
+    const user = await prisma.user.findUnique({ where: { email: body.email } });
+
+    const newSubmission = await prisma.contactMessage.create({
+      data: {
+        name: body.name,
+        email: body.email,
+        message: body.message,
+        read: false,
+        // Link to user if found, otherwise leave userId null
+        ...(user && { userId: user.id }), 
+      },
+    });
+
+    console.log('Created new contact submission:', newSubmission.id);
+    // Return success response (maybe the created object, or just success)
+    return NextResponse.json({ message: 'Submission received successfully', submissionId: newSubmission.id }, { status: 201 }); 
+
+  } catch (error) {
+    console.error('Error creating contact submission:', error);
+    // Avoid leaking detailed errors to the public contact form
+    return NextResponse.json(
+      { error: 'Internal server error', message: 'Could not process your submission at this time.' }, 
+      { status: 500 }
+    );
+  }
+} 
