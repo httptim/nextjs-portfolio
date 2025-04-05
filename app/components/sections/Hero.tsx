@@ -1,170 +1,112 @@
 // app/components/sections/Hero.tsx
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useMousePosition } from '../../hooks/useMousePosition';
+import Link from 'next/link';
+import Particles from '@/app/components/Particles'; // Adjust import path if needed
+
+interface HeroConfig {
+  heroTitle?: string;
+  heroSubtitle?: string;
+  heroButtonText?: string;
+  heroButtonLink?: string;
+}
 
 export default function Hero() {
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  const mousePosition = useMousePosition();
-  
-  // Typing animation states
-  const [displayText, setDisplayText] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [loopNum, setLoopNum] = useState(0);
-  const [typingSpeed, setTypingSpeed] = useState(150); // Increased from 100
-  
-  // List of phrases to cycle through
-  const phrases = [
-    "Full Stack Developer",
-    "UI/UX Designer",
-    "Mobile App Developer",
-    "Web Architect",
-    "Problem Solver"
-  ];
-  
-  // Animation variants
+  const [config, setConfig] = useState<HeroConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/site-configuration');
+        if (!response.ok) throw new Error('Failed to fetch hero configuration');
+        const data = await response.json();
+        setConfig(data);
+      } catch (err) {
+        console.error(err);
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchConfig();
+  }, []);
+
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: {
+    visible: { 
       opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
-        delayChildren: 0.3,
-      },
+      transition: { staggerChildren: 0.2, delayChildren: 0.3 }
     },
   };
-  
+
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.5, ease: "easeOut" },
-    },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
   };
+  
+  const defaultTitle = "Default Hero Title";
+  const defaultSubtitle = "Default subtitle explaining your services.";
+  const defaultButtonText = "Get Started";
+  const defaultButtonLink = "#contact";
 
-  // Interactive heading behavior
-  const calculateMouseEffect = () => {
-    if (!headingRef.current || !mousePosition.x || !mousePosition.y) return {};
-    
-    const rect = headingRef.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    
-    const distanceX = (mousePosition.x - centerX) / 20;
-    const distanceY = (mousePosition.y - centerY) / 20;
-    
-    return {
-      transform: `translate(${distanceX * -0.5}px, ${distanceY * -0.5}px)`,
-      textShadow: `${distanceX * 0.1}px ${distanceY * 0.1}px 8px rgba(0, 0, 0, 0.3)`,
-    };
-  };
+  // Display loading or error state, or defaults if fetch fails
+  if (loading) {
+      return (
+          <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-slate-900">
+             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sky-500"></div>
+          </div>
+      );
+  }
 
-  // Typing animation effect with slower speeds
-  useEffect(() => {
-    const currentPhrase = phrases[loopNum % phrases.length];
-    
-    const timer = setTimeout(() => {
-      if (!isDeleting) {
-        // Typing forward - slower
-        setDisplayText(currentPhrase.substring(0, displayText.length + 1));
-        
-        // If we've completed typing the current phrase
-        if (displayText === currentPhrase) {
-          // Add a pause before deleting
-          setTimeout(() => {
-            setIsDeleting(true);
-            setTypingSpeed(100); // Deleting speed (increased from 50)
-          }, 1500); // Pause at the end of the phrase
-        } else {
-          // Normal typing speed with slight variation (slowed down)
-          setTypingSpeed(100 + Math.random() * 50); // Increased from 50+30
-        }
-      } else {
-        // Backspacing - also slower
-        setDisplayText(currentPhrase.substring(0, displayText.length - 1));
-        
-        // If we've completely deleted the current phrase
-        if (displayText === '') {
-          setIsDeleting(false);
-          setLoopNum(loopNum + 1);
-          setTypingSpeed(150); // Reset typing speed (increased from 100)
-          
-          // Add a pause before starting the next phrase
-          return setTimeout(() => {}, 500);
-        } else {
-          // Deleting speed with slight variation (slowed down)
-          setTypingSpeed(80 + Math.random() * 40); // Increased from 30+20
-        }
-      }
-    }, typingSpeed);
-    
-    return () => clearTimeout(timer);
-  }, [displayText, isDeleting, loopNum, typingSpeed, phrases]);
+  // Use fetched data or defaults
+  const title = config?.heroTitle || defaultTitle;
+  const subtitle = config?.heroSubtitle || defaultSubtitle;
+  const buttonText = config?.heroButtonText || defaultButtonText;
+  const buttonLink = config?.heroButtonLink || defaultButtonLink;
 
   return (
-    <div className="flex items-center justify-center h-screen relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-radial from-slate-800/30 to-transparent" />
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-b from-slate-900 to-slate-800">
+      <div className="absolute inset-0 z-0 opacity-30">
+        <Particles />
+      </div>
       
       <motion.div 
-        className="container mx-auto px-6 z-10 text-center md:text-left"
+        className="relative z-10 text-center px-6"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
-        <motion.div variants={itemVariants} className="mb-2 text-sky-400 tracking-widest font-light">
-          WELCOME TO MY PORTFOLIO
-        </motion.div>
-        
+        {error && <div className="text-red-400 mb-4">Error: {error}. Displaying default content.</div>}
+
         <motion.h1 
-          ref={headingRef}
-          className="text-5xl md:text-7xl font-bold mb-6 tracking-tight"
+          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-tight"
           variants={itemVariants}
-          style={calculateMouseEffect()}
         >
-          <span className="text-white">I'm a </span>
-          <span className="text-sky-400">{displayText}</span>
-          <span className="text-sky-400 animate-pulse">|</span>
+          {title}
         </motion.h1>
         
         <motion.p 
-          className="text-lg md:text-xl text-slate-300 max-w-lg mb-8"
+          className="text-lg sm:text-xl md:text-2xl text-slate-300 max-w-3xl mx-auto mb-10"
           variants={itemVariants}
         >
-          Crafting elegant solutions to complex problems with clean code and intuitive design.
+          {subtitle}
         </motion.p>
         
-        <motion.div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start" variants={itemVariants}>
-          <motion.button 
-            className="px-8 py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-md font-medium transition-colors"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => {
-              const projectsSection = document.getElementById('projects');
-              if (projectsSection) {
-                projectsSection.scrollIntoView({ behavior: 'smooth' });
-              }
-            }}
-          >
-            View My Work
-          </motion.button>
-          
-          <motion.button 
-            className="px-8 py-3 border border-slate-600 hover:border-sky-400 hover:text-sky-400 rounded-md font-medium transition-colors"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => {
-              const contactSection = document.getElementById('contact');
-              if (contactSection) {
-                contactSection.scrollIntoView({ behavior: 'smooth' });
-              }
-            }}
-          >
-            Contact Me
-          </motion.button>
-        </motion.div>
+        {buttonText && buttonLink && (
+          <motion.div variants={itemVariants}>
+            <Link href={buttonLink} legacyBehavior>
+              <a className="inline-block px-8 py-4 bg-sky-500 hover:bg-sky-600 text-white text-lg font-semibold rounded-lg shadow-lg transition-colors duration-300 transform hover:scale-105">
+                {buttonText}
+              </a>
+            </Link>
+          </motion.div>
+        )}
       </motion.div>
     </div>
   );

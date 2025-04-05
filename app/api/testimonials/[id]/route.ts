@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 export async function GET(
   request: NextRequest,
@@ -68,147 +69,127 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+// PUT handler to update a specific testimonial by ID (admin only)
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  const id = params.id;
   try {
-    // Verify that the user is authenticated and is an admin
+    console.log(`Testimonials API PUT called for ID: ${id}`);
     const session = await getServerSession(authOptions);
-    
-    if (!session) {
+
+    if (!session || session.user?.role !== 'ADMIN') {
+      console.warn(`Unauthorized attempt to update testimonial ${id}`);
       return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      );
-    }
-    
-    if (session.user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Not authorized' },
+        { error: 'Unauthorized', details: 'Admin role required to update testimonials' },
         { status: 403 }
       );
     }
-    
-    const { id } = await params;
-    
-    // Check if the testimonial exists
-    const existingTestimonial = await prisma.testimonial.findUnique({
-      where: { id },
-    });
-    
-    if (!existingTestimonial) {
-      return NextResponse.json(
-        { error: 'Testimonial not found' },
-        { status: 404 }
-      );
-    }
-    
-    // Parse the request body
+
     const body = await request.json();
     const { content, rating, clientId, position, company, isActive, order } = body;
     
-    // Validate required fields
-    if (!content) {
-      return NextResponse.json(
-        { error: 'Content is required' },
-        { status: 400 }
-      );
-    }
+    const dataToUpdate: Prisma.TestimonialUpdateInput = {};
+
+    // Basic validation and adding fields to update object
+    if (content !== undefined) dataToUpdate.content = content;
+    if (position !== undefined) dataToUpdate.position = position;
+    if (company !== undefined) dataToUpdate.company = company;
+    if (isActive !== undefined && typeof isActive === 'boolean') dataToUpdate.isActive = isActive;
     
-    // Validate rating
-    const ratingValue = Number(rating);
-    if (isNaN(ratingValue) || ratingValue < 1 || ratingValue > 5) {
-      return NextResponse.json(
-        { error: 'Rating must be a number between 1 and 5' },
-        { status: 400 }
-      );
+    if (rating !== undefined) {
+      const ratingValue = Number(rating);
+      if (!isNaN(ratingValue) && ratingValue >= 1 && ratingValue <= 5) {
+        dataToUpdate.rating = ratingValue;
+      } else {
+        return NextResponse.json({ error: 'Invalid rating', details: 'Rating must be between 1 and 5.' }, { status: 400 });
+      }
     }
-    
-    // Check if the client exists if clientId is provided
-    if (clientId && clientId !== existingTestimonial.clientId) {
-      const client = await prisma.user.findUnique({
-        where: { id: clientId },
-      });
-      
-      if (!client) {
-        return NextResponse.json(
-          { error: 'Client not found' },
-          { status: 404 }
-        );
+
+    if (order !== undefined) {
+      const orderValue = Number(order);
+      if (!isNaN(orderValue)) {
+        dataToUpdate.order = orderValue;
+      } else {
+        return NextResponse.json({ error: 'Invalid order', details: 'Order must be a number.' }, { status: 400 });
       }
     }
     
-    // Update the testimonial
-    const testimonial = await prisma.testimonial.update({
+    // Check if client exists if clientId is provided for update
+    if (clientId !== undefined) {
+       if (typeof clientId !== 'string' || !clientId) {
+           return NextResponse.json({ error: 'Invalid Client ID', details: 'Client ID must be a non-empty string.' }, { status: 400 });
+       }
+       const clientExists = await prisma.user.findUnique({ where: { id: clientId } });
+       if (!clientExists) {
+           return NextResponse.json({ error: 'Client Not Found', details: 'The specified client ID does not exist.' }, { status: 404 });
+       }
+       dataToUpdate.client = { connect: { id: clientId } }; // Connect to new client
+    }
+
+    if (Object.keys(dataToUpdate).length === 0) {
+        return NextResponse.json(
+            { error: 'Bad Request', details: 'No valid fields provided for update.' },
+            { status: 400 }
+        );
+    }
+
+    console.log(`Updating testimonial ${id} with data:`, dataToUpdate);
+
+    const updatedTestimonial = await prisma.testimonial.update({
       where: { id },
-      data: {
-        content,
-        rating: ratingValue,
-        clientId: clientId || existingTestimonial.clientId,
-        position,
-        company,
-        isActive: isActive !== undefined ? isActive : existingTestimonial.isActive,
-        order: order !== undefined ? order : existingTestimonial.order,
-      },
+      data: dataToUpdate,
+      include: { // Include client data in the response
+        client: {
+          select: { id: true, name: true, company: true }
+        }
+      }
     });
-    
-    return NextResponse.json({ testimonial });
+
+    console.log('Testimonial updated successfully:', updatedTestimonial.id);
+    return NextResponse.json({ testimonial: updatedTestimonial });
+
   } catch (error) {
-    console.error('Error in testimonial API route:', error);
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      return NextResponse.json({ error: 'Not Found', details: `Testimonial with ID ${id} not found.` }, { status: 404 });
+    }
+    console.error(`Error updating testimonial ${id}:`, error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    // Verify that the user is authenticated and is an admin
+// DELETE handler for a specific testimonial by ID (admin only)
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  const id = params.id;
+   try {
+    console.log(`Testimonials API DELETE called for ID: ${id}`);
     const session = await getServerSession(authOptions);
-    
-    if (!session) {
+
+    if (!session || session.user?.role !== 'ADMIN') {
+      console.warn(`Unauthorized attempt to delete testimonial ${id}`);
       return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      );
-    }
-    
-    if (session.user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Not authorized' },
+        { error: 'Unauthorized', details: 'Admin role required to delete testimonials' },
         { status: 403 }
       );
     }
-    
-    const { id } = await params;
-    
-    // Check if the testimonial exists
-    const existingTestimonial = await prisma.testimonial.findUnique({
-      where: { id },
-    });
-    
-    if (!existingTestimonial) {
-      return NextResponse.json(
-        { error: 'Testimonial not found' },
-        { status: 404 }
-      );
-    }
-    
-    // Delete the testimonial
+
+    // Prisma delete throws P2025 if record not found, which we catch below
     await prisma.testimonial.delete({
       where: { id },
     });
-    
-    return NextResponse.json({ success: true });
+
+    console.log('Deleted testimonial:', id);
+    return NextResponse.json({ message: 'Testimonial deleted successfully' }, { status: 200 });
+
   } catch (error) {
-    console.error('Error in testimonial API route:', error);
+     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      // Record to delete not found
+      return NextResponse.json({ error: 'Not Found', details: `Testimonial with ID ${id} not found.` }, { status: 404 });
+    }
+    console.error(`Error deleting testimonial ${id}:`, error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
