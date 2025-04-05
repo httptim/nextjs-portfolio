@@ -54,7 +54,12 @@ export default function BillingPage() {
     if (status === 'authenticated') {
       const fetchInvoices = async () => {
         try {
-          const response = await fetch('/api/dashboard/customer/billing');
+          const response = await fetch('/api/billing', {
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          });
           if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.error || 'Failed to fetch invoices');

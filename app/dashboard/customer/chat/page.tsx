@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useSession } from 'next-auth/react';
 
 interface Message {
   id: string;
@@ -25,25 +26,36 @@ interface Conversation {
 export default function MessagesPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const session = useSession();
 
   useEffect(() => {
-    const fetchConversations = async () => {
+    const fetchMessages = async () => {
       try {
-        const response = await fetch('/api/dashboard/customer/messages');
+        const response = await fetch('/api/messages', {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
         if (!response.ok) {
-          throw new Error('Failed to fetch conversations');
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch messages');
         }
         const data = await response.json();
         setConversations(data.conversations);
       } catch (error) {
-        console.error('Error fetching conversations:', error);
+        console.error('Error fetching messages:', error);
+        setError(error instanceof Error ? error.message : 'Failed to fetch messages');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchConversations();
-  }, []);
+    if (session.status === 'authenticated' && session.data) {
+      fetchMessages();
+    }
+  }, [session]);
 
   if (loading) {
     return (

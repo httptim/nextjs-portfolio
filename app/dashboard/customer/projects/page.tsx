@@ -30,10 +30,16 @@ export default function CustomerProjects() {
     const fetchProjects = async () => {
       setLoading(true);
       try {
-        const response = await fetch('/api/projects/customer');
+        const response = await fetch('/api/projects', {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
         
         if (!response.ok) {
-          throw new Error('Failed to fetch projects');
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch projects');
         }
         
         const data = await response.json();
