@@ -1,37 +1,9 @@
+// app/dashboard/customer/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
-import { formatRelativeTime, formatDeadline } from '@/lib/utils/date-utils';
-
-interface DashboardStats {
-  activeProjects: number;
-  completedProjects: number;
-  tasksCompleted: number;
-  pendingTasks: number;
-  nextDeadline: string | null;
-  totalInvoices: number;
-  unpaidInvoices: number;
-}
-
-interface Activity {
-  id: string;
-  type: string;
-  action: string;
-  project: string | null;
-  customer: string | null;
-  timestamp: string;
-}
-
-interface Notification {
-  id: string;
-  message: string;
-  read: boolean;
-  time: string;
-  link?: string;
-}
 
 interface Project {
   id: string;
@@ -46,91 +18,91 @@ interface Project {
   };
 }
 
+interface Notification {
+  id: string;
+  message: string;
+  time: string;
+  read: boolean;
+}
+
 export default function CustomerDashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [recentProjects, setRecentProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { data: session } = useSession();
+  const [userName, setUserName] = useState('');
 
-  // Fetch dashboard data on mount
+  // Load customer data
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      if (!session) return;
-
-      setLoading(true);
-      try {
-        // Fetch stats
-        const statsResponse = await fetch('/api/dashboard/customer/stats');
-        if (!statsResponse.ok) {
-          throw new Error('Failed to fetch dashboard stats');
-        }
-        const statsData = await statsResponse.json();
-        
-        // Fetch activities
-        const activitiesResponse = await fetch('/api/dashboard/customer/activities');
-        if (!activitiesResponse.ok) {
-          throw new Error('Failed to fetch recent activities');
-        }
-        const activitiesData = await activitiesResponse.json();
-        
-        // Fetch notifications
-        const notificationsResponse = await fetch('/api/dashboard/customer/notifications');
-        if (!notificationsResponse.ok) {
-          throw new Error('Failed to fetch notifications');
-        }
-        const notificationsData = await notificationsResponse.json();
-        
-        // Fetch recent projects
-        const projectsResponse = await fetch('/api/projects?limit=2&status=active');
-        if (!projectsResponse.ok) {
-          throw new Error('Failed to fetch recent projects');
-        }
-        const projectsData = await projectsResponse.json();
-        
-        setStats(statsData.stats);
-        setActivities(activitiesData.activities);
-        setNotifications(notificationsData.notifications);
-        setRecentProjects(projectsData.projects);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        setError('Failed to load dashboard data. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    if (session) {
-      fetchDashboardData();
-    }
-  }, [session]);
-
-  // Mark notification as read
-  const markNotificationAsRead = async (id: string) => {
-    try {
-      const response = await fetch('/api/dashboard/customer/notifications', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
+    // In a real app, this would be API calls
+    const loadData = () => {
+      // Example data
+      setProjects([
+        {
+          id: 'p1',
+          name: 'E-Commerce Website',
+          status: 'active',
+          progress: 65,
+          startDate: '2025-03-15',
+          endDate: '2025-05-30',
+          tasks: {
+            total: 15,
+            completed: 8,
+          },
         },
-        body: JSON.stringify({ notificationId: id }),
-      });
-
-      if (response.ok) {
-        setNotifications(notifications.map(notification => 
-          notification.id === id 
-            ? { ...notification, read: true }
-            : notification
-        ));
+        {
+          id: 'p2',
+          name: 'Mobile App UI/UX',
+          status: 'active',
+          progress: 25,
+          startDate: '2025-03-25',
+          endDate: '2025-06-10',
+          tasks: {
+            total: 12,
+            completed: 3,
+          },
+        },
+      ]);
+      
+      setNotifications([
+        {
+          id: 'n1',
+          message: 'New task added to E-Commerce Website',
+          time: '2 hours ago',
+          read: false,
+        },
+        {
+          id: 'n2',
+          message: 'Task "Design homepage mockup" was marked as completed',
+          time: '1 day ago',
+          read: false,
+        },
+        {
+          id: 'n3',
+          message: 'Your invoice #INV-2023-001 is due in 7 days',
+          time: '3 days ago',
+          read: true,
+        },
+      ]);
+      
+      const name = localStorage.getItem('userName');
+      if (name) {
+        setUserName(name);
       }
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
+      
+      setLoading(false);
+    };
+
+    loadData();
+  }, []);
+
+  const markNotificationAsRead = (id: string) => {
+    setNotifications(notifications.map(notification => 
+      notification.id === id 
+        ? { ...notification, read: true }
+        : notification
+    ));
   };
 
-  // Get status color class
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -146,26 +118,8 @@ export default function CustomerDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sky-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-          <div className="bg-red-500/20 text-red-500 p-4 rounded-md">
-            {error}
-            <button 
-              className="ml-2 underline"
-              onClick={() => window.location.reload()}
-            >
-              Try again
-            </button>
-          </div>
-        </div>
       </div>
     );
   }
@@ -174,9 +128,7 @@ export default function CustomerDashboard() {
     <div className="py-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
         <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-300">
-          Welcome back, {session?.user?.name || ''}
-        </p>
+        <p className="mt-1 text-sm text-slate-300">Welcome back, {userName}</p>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 mt-8">
@@ -193,11 +145,11 @@ export default function CustomerDashboard() {
               </Link>
             </div>
             
-            {recentProjects.length === 0 ? (
-              <p className="text-center text-slate-400 py-4">No active projects.</p>
-            ) : (
-              <div className="space-y-6">
-                {recentProjects.map((project) => (
+            <div className="space-y-6">
+              {projects.length === 0 ? (
+                <p className="text-center text-slate-400">No active projects.</p>
+              ) : (
+                projects.map((project) => (
                   <motion.div
                     key={project.id}
                     initial={{ opacity: 0 }}
@@ -213,7 +165,7 @@ export default function CustomerDashboard() {
                             {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
                           </span>
                           <span className="text-xs text-slate-400 ml-2">
-                            {new Date(project.startDate).toLocaleDateString()} - {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Ongoing'}
+                            {project.startDate} - {project.endDate}
                           </span>
                         </div>
                       </div>
@@ -243,9 +195,9 @@ export default function CustomerDashboard() {
                       </Link>
                     </div>
                   </motion.div>
-                ))}
-              </div>
-            )}
+                ))
+              )}
+            </div>
           </div>
         </div>
 
@@ -265,7 +217,7 @@ export default function CustomerDashboard() {
               </div>
               <div className="ml-4">
                 <h3 className="text-sm font-medium text-slate-300">Completed Tasks</h3>
-                <p className="text-2xl font-semibold text-white">{stats?.tasksCompleted || 0}</p>
+                <p className="text-2xl font-semibold text-white">11</p>
               </div>
             </div>
           </motion.div>
@@ -284,7 +236,7 @@ export default function CustomerDashboard() {
               </div>
               <div className="ml-4">
                 <h3 className="text-sm font-medium text-slate-300">Pending Tasks</h3>
-                <p className="text-2xl font-semibold text-white">{stats?.pendingTasks || 0}</p>
+                <p className="text-2xl font-semibold text-white">16</p>
               </div>
             </div>
           </motion.div>
@@ -303,9 +255,7 @@ export default function CustomerDashboard() {
               </div>
               <div className="ml-4">
                 <h3 className="text-sm font-medium text-slate-300">Next Deadline</h3>
-                <p className="text-lg font-semibold text-white">
-                  {stats?.nextDeadline ? formatDeadline(stats.nextDeadline) : 'None scheduled'}
-                </p>
+                <p className="text-lg font-semibold text-white">April 15, 2025</p>
               </div>
             </div>
           </motion.div>
@@ -321,18 +271,24 @@ export default function CustomerDashboard() {
           >
             <div className="p-6">
               <h2 className="text-lg font-medium text-white mb-4">Recent Activity</h2>
-              {activities.length === 0 ? (
-                <p className="text-center text-slate-400 py-4">No recent activities.</p>
-              ) : (
-                <div className="space-y-4">
-                  {activities.slice(0, 4).map((activity) => (
-                    <div key={activity.id} className="border-l-2 border-sky-500 pl-4">
-                      <p className="text-white text-sm">{activity.action}</p>
-                      <p className="text-xs text-slate-400">{formatRelativeTime(activity.timestamp)}</p>
-                    </div>
-                  ))}
+              <div className="space-y-4">
+                <div className="border-l-2 border-sky-500 pl-4">
+                  <p className="text-white text-sm">Task "Set up payment processing" was moved to Review</p>
+                  <p className="text-xs text-slate-400">Today, 10:30 AM</p>
                 </div>
-              )}
+                <div className="border-l-2 border-green-500 pl-4">
+                  <p className="text-white text-sm">Task "Design homepage mockup" was completed</p>
+                  <p className="text-xs text-slate-400">Yesterday, 2:45 PM</p>
+                </div>
+                <div className="border-l-2 border-yellow-500 pl-4">
+                  <p className="text-white text-sm">New task "Implement user authentication" was added</p>
+                  <p className="text-xs text-slate-400">Apr 1, 2025, 9:15 AM</p>
+                </div>
+                <div className="border-l-2 border-purple-500 pl-4">
+                  <p className="text-white text-sm">Project milestone "Initial Design Phase" completed</p>
+                  <p className="text-xs text-slate-400">Mar 29, 2025, 4:00 PM</p>
+                </div>
+              </div>
             </div>
           </motion.div>
 
@@ -344,11 +300,11 @@ export default function CustomerDashboard() {
           >
             <div className="p-6">
               <h2 className="text-lg font-medium text-white mb-4">Notifications</h2>
-              {notifications.length === 0 ? (
-                <p className="text-center text-slate-400 py-4">No notifications.</p>
-              ) : (
-                <div className="space-y-4">
-                  {notifications.map((notification) => (
+              <div className="space-y-4">
+                {notifications.length === 0 ? (
+                  <p className="text-center text-slate-400">No notifications.</p>
+                ) : (
+                  notifications.map((notification) => (
                     <div 
                       key={notification.id}
                       className={`p-3 rounded-md ${notification.read ? 'bg-slate-700' : 'bg-slate-700/50 border-l-2 border-sky-500'}`}
@@ -364,21 +320,11 @@ export default function CustomerDashboard() {
                           </button>
                         )}
                       </div>
-                      <p className="text-xs text-slate-400 mt-1">{formatRelativeTime(notification.time)}</p>
-                      {notification.link && (
-                        <div className="mt-2">
-                          <Link 
-                            href={notification.link}
-                            className="text-xs text-sky-400 hover:text-sky-300"
-                          >
-                            View details
-                          </Link>
-                        </div>
-                      )}
+                      <p className="text-xs text-slate-400 mt-1">{notification.time}</p>
                     </div>
-                  ))}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
               {notifications.length > 0 && (
                 <div className="mt-4 text-center">
                   <button className="text-sm text-sky-400 hover:text-sky-300">
@@ -393,3 +339,4 @@ export default function CustomerDashboard() {
     </div>
   );
 }
+
