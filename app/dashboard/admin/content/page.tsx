@@ -526,6 +526,7 @@ export default function ContentManagement() {
                   </label>
                   <input
                     type="text"
+                    name="title"
                     id="title"
                     value={editingProject.title}
                     onChange={handleInputChange}
@@ -555,6 +556,7 @@ export default function ContentManagement() {
                     Description
                   </label>
                   <textarea
+                    name="description"
                     id="description"
                     rows={3}
                     value={editingProject.description}
@@ -588,6 +590,7 @@ export default function ContentManagement() {
                   </label>
                   <input
                     type="text"
+                    name="demoLink"
                     id="demoLink"
                     value={editingProject.demoLink || ''}
                     onChange={handleInputChange}
@@ -601,6 +604,7 @@ export default function ContentManagement() {
                   </label>
                   <input
                     type="text"
+                    name="githubLink"
                     id="githubLink"
                     value={editingProject.githubLink || ''}
                     onChange={handleInputChange}
@@ -633,6 +637,7 @@ export default function ContentManagement() {
                   </label>
                   <input
                     type="text"
+                    name="image"
                     id="image"
                     value={editingProject.image || ''}
                     onChange={handleInputChange}
@@ -646,6 +651,7 @@ export default function ContentManagement() {
                   </label>
                   <input
                     type="text"
+                    name="timeline"
                     id="timeline"
                     value={editingProject.timeline || ''}
                     onChange={handleInputChange}
@@ -659,6 +665,7 @@ export default function ContentManagement() {
                   </label>
                   <input
                     type="text"
+                    name="status"
                     id="status"
                     value={editingProject.status || ''}
                     onChange={handleInputChange}
