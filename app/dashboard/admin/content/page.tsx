@@ -102,7 +102,7 @@ export default function ContentManagement() {
       id: '',
       title: '',
       description: '',
-      category: selectedCategory === 'all' ? 'MY_PROJECTS' : selectedCategory,
+      category: selectedCategory === 'all' ? 'CLIENT_PROJECTS' : selectedCategory,
       technologies: [],
       features: [],
       tags: [],
@@ -328,7 +328,7 @@ export default function ContentManagement() {
 
             <div className="mb-6">
               <div className="flex flex-wrap gap-2">
-                {['all', 'MY_PROJECTS', 'FUTURE_PROJECTS', 'PERSONAL_PROJECTS'].map((category) => (
+                {['all', 'CLIENT_PROJECTS', 'PERSONAL_PROJECTS'].map((category) => (
                   <button
                     key={category}
                     onClick={() => setSelectedCategory(category === 'all' ? 'all' : category)}
@@ -560,8 +560,7 @@ export default function ContentManagement() {
                     onChange={handleInputChange}
                     className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
                   >
-                    <option value="MY_PROJECTS">My Projects</option>
-                    <option value="FUTURE_PROJECTS">Future Projects</option>
+                    <option value="CLIENT_PROJECTS">Client Projects</option>
                     <option value="PERSONAL_PROJECTS">Personal Projects</option>
                   </select>
                 </div>

@@ -1,76 +1,65 @@
 // app/components/sections/Projects.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
-import { motion, useAnimation } from 'framer-motion';
-import { useInView } from 'react-intersection-observer';
+import { motion, useAnimation, useInView } from 'framer-motion';
 
-// Interface matching PortfolioProject model from schema.prisma
-interface PortfolioProject {
+// Define the structure of a project
+interface Project {
   id: string;
   title: string;
   description: string;
-  category: string; // e.g., FULLSTACK, FRONTEND, etc.
+  category: string;
   technologies: string[];
-  imageUrl?: string | null;
-  demoUrl?: string | null;
-  githubUrl?: string | null;
-  features: string[];
-  status?: string | null;
-  timeline?: string | null;
-  tags: string[];
-  order: number;
-  createdAt: string; // Dates are typically strings after JSON serialization
-  updatedAt: string;
+  demoUrl?: string; // Changed from demoLink
+  githubUrl?: string; // Changed from githubLink
+  imageUrl?: string; // Changed from image
 }
 
-// Category relevant to this component
-const CATEGORY_FILTER = 'MY_PROJECTS';
+// Define the constant for the category filter
+const CATEGORY_FILTER = 'CLIENT_PROJECTS'; // Updated category filter
 
 export default function Projects() {
-  const [projects, setProjects] = useState<PortfolioProject[]>([]); 
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
   const controls = useAnimation();
-  const [ref, inView] = useInView({
-    triggerOnce: true,
-    threshold: 0.1,
-  });
+  const ref = React.useRef(null);
+  const inView = useInView(ref, { once: true, margin: '-100px 0px' });
 
-  // Fetch all portfolio items and filter
   useEffect(() => {
-    const fetchProjects = async () => {
+    const fetchPortfolioItems = async () => {
       setLoading(true);
-      setError(null);
+      setError(null); // Reset error before fetch
       try {
-        const response = await fetch('/api/portfolio-items', { cache: 'no-store' });
+        const response = await fetch('/api/portfolio-items');
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.details || errorData.error || 'Failed to fetch projects');
+          let errorMsg = 'Failed to fetch portfolio items';
+          try {
+             const errorData = await response.json();
+             errorMsg = errorData.error || errorData.message || errorMsg;
+          } catch(e){}
+          throw new Error(errorMsg);
         }
         const data = await response.json();
-        const fetchedProjects: PortfolioProject[] = data.projects || [];
         
-        // Filter for MY_PROJECTS category and sort by order
-        const relevantProjects = fetchedProjects
-            .filter(p => p.category.toUpperCase() === CATEGORY_FILTER)
-            .sort((a, b) => a.order - b.order);
-           
-        setProjects(relevantProjects);
+        // Filter projects directly based on the constant
+        const filteredItems = (data.projects || []).filter((item: Project) => item.category === CATEGORY_FILTER);
+        setProjects(filteredItems);
 
       } catch (err) {
-        console.error('Error fetching projects:', err);
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        console.error('Error fetching or filtering portfolio items:', err);
+        setError(err instanceof Error ? err.message : 'An unexpected error occurred');
       } finally {
         setLoading(false);
       }
     };
-    fetchProjects();
-  }, []);
 
-  // Handle animation start when component is in view
+    fetchPortfolioItems();
+  }, []); // Dependency array is empty, runs once on mount
+
+  // Trigger animation when the component is in view
   useEffect(() => {
     if (inView && !loading) {
       controls.start('visible');
@@ -105,9 +94,10 @@ export default function Projects() {
         variants={containerVariants}
       >
         <motion.div variants={itemVariants} className="text-center mb-16">
-          <h2 className="text-3xl font-bold mb-4 text-white">My <span className="text-sky-400">Projects</span></h2>
+          {/* Updated Section Title */}
+          <h2 className="text-3xl font-bold mb-4 text-white">Client <span className="text-sky-400">Projects</span></h2>
           <p className="text-slate-300 max-w-2xl mx-auto">
-            Here are some of the projects I've worked on. Each project represents unique challenges and solutions.
+            Here are some of the projects I've worked on for clients. Each project represents unique challenges and solutions.
           </p>
         </motion.div>
 
@@ -132,7 +122,8 @@ export default function Projects() {
                 variants={itemVariants}
                 className="text-center py-10"
              >
-                <p className="text-slate-300">No projects categorized as 'My Projects' found.</p>
+                {/* Updated Message */}
+                <p className="text-slate-300">No projects categorized as 'Client Projects' found.</p>
              </motion.div>
         )}
 

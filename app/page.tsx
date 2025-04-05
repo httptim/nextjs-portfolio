@@ -8,12 +8,15 @@ import Particles from './components/Particles';
 import Hero from './components/sections/Hero';
 import About from './components/sections/About';
 import Projects from './components/sections/Projects';
-import FutureProjects from './components/sections/FutureProjects';
 import PersonalProjects from './components/sections/PersonalProjects';
-import Testimonials from './components/sections/Testimonials'; // Add this import
+import Testimonials from './components/sections/Testimonials';
 import Contact from './components/sections/Contact';
 import Footer from './components/Footer';
 import Navigation from './components/Navigation';
+import Head from 'next/head';
+// import { FloatingNav } from './components/ui/floating-navbar'; // Commented out - Path issue
+// import { navItems } from '../data'; // Removed incorrect import
+import { Suspense } from 'react'; // Suspense might not be used if FloatingNav is out
 
 export default function Home() {
   const [activeSection, setActiveSection] = useState('hero');
@@ -29,10 +32,9 @@ export default function Home() {
   const sections = [
     { id: 'hero', label: 'Home' },
     { id: 'about', label: 'About' },
-    { id: 'projects', label: 'Projects' },
-    { id: 'future-projects', label: 'Future Work' },
+    { id: 'projects', label: 'Client Projects' },
     { id: 'personal-projects', label: 'Personal' },
-    { id: 'testimonials', label: 'Testimonials' }, // Add testimonials section
+    { id: 'testimonials', label: 'Testimonials' },
     { id: 'contact', label: 'Contact' }
   ];
 
@@ -66,6 +68,12 @@ export default function Home() {
 
   return (
     <div className="relative bg-slate-900 text-slate-100 min-h-screen" ref={mainRef}>
+      <Head>
+        <title>Tim Hultz - Fullstack Developer</title>
+        <meta name="description" content="Portfolio of Tim Hultz, a fullstack developer specializing in React, Node.js, and modern web technologies." />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
       {/* Particle background effect */}
       <div className="fixed inset-0 z-0">
         <Particles />
@@ -96,15 +104,10 @@ export default function Home() {
             <Projects />
           </section>
 
-          <section id="future-projects" className="min-h-screen py-20">
-            <FutureProjects />
-          </section>
-
           <section id="personal-projects" className="min-h-screen py-20">
             <PersonalProjects />
           </section>
           
-          {/* Add Testimonials section */}
           <section id="testimonials" className="min-h-screen py-20">
             <Testimonials />
           </section>
@@ -116,6 +119,8 @@ export default function Home() {
 
         <Footer />
       </motion.main>
+
+      {/* <FloatingNav navItems={sections} /> */}
     </div>
   );
 }

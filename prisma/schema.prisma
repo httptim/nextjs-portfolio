@@ -183,26 +183,25 @@ model ContactMessage {
 
 // Portfolio project (displayed on the public site)
 model PortfolioProject {
-  id           String              @id @default(cuid())
+  id           String   @id @default(cuid())
   title        String
-  description  String
-  category     PortfolioCategory   @default(MY_PROJECTS)
+  description  String   @db.Text
+  category     PortfolioCategory @default(CLIENT_PROJECTS)
   technologies String[]
-  imageUrl     String?
-  demoUrl      String?
-  githubUrl    String?
-  features     String[]
-  status       String?
+  features     String[] @default([])
+  demoUrl      String?  @map("demo_url")
+  githubUrl    String?  @map("github_url")
+  imageUrl     String?  @map("image_url")
   timeline     String?
-  tags         String[]
-  order        Int                 @default(0)
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  status       String?
+  tags         String[] @default([])
+  order        Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt
 }
 
 enum PortfolioCategory {
-  MY_PROJECTS
-  FUTURE_PROJECTS
+  CLIENT_PROJECTS
   PERSONAL_PROJECTS
 }
 
