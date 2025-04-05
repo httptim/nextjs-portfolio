@@ -33,7 +33,7 @@ export default function Testimonials() {
       setError(null);
       try {
         // Fetch only active testimonials (as GET /api/testimonials does by default)
-        const response = await fetch('/api/testimonials');
+        const response = await fetch('/api/testimonials', { cache: 'no-store' });
         if (!response.ok) throw new Error('Failed to fetch testimonials');
         const data = await response.json();
         setTestimonials(data.testimonials || []); // Ensure it's an array

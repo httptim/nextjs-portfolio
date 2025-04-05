@@ -48,7 +48,7 @@ export default function Projects() {
       setError(null);
       try {
         // Assuming GET /api/portfolio-items returns all items
-        const response = await fetch('/api/portfolio-items'); 
+        const response = await fetch('/api/portfolio-items', { cache: 'no-store' });
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.details || errorData.error || 'Failed to fetch projects');

@@ -43,7 +43,7 @@ export default function FutureProjects() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch('/api/portfolio-items');
+        const response = await fetch('/api/portfolio-items', { cache: 'no-store' });
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           throw new Error(errorData.details || errorData.error || 'Failed to fetch future projects');
