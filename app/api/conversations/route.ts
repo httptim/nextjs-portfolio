@@ -35,7 +35,14 @@ export async function GET(request: NextRequest) {
           project: {
             select: {
               id: true,
-              name: true
+              name: true,
+              client: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true
+                }
+              }
             }
           },
           messages: {
@@ -70,7 +77,14 @@ export async function GET(request: NextRequest) {
           project: {
             select: {
               id: true,
-              name: true
+              name: true,
+              client: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true
+                }
+              }
             }
           },
           messages: {
@@ -95,21 +109,42 @@ export async function GET(request: NextRequest) {
     }
     
     // Format the dates for JSON
-    const formattedConversations = conversations.map(conversation => ({
-      id: conversation.id,
-      project: conversation.project,
-      messages: conversation.messages.map(message => ({
-        id: message.id,
-        content: message.content,
-        sender: {
-          name: message.sender.name,
-          role: message.sender.role
-        },
-        createdAt: message.createdAt.toISOString()
-      })),
-      createdAt: conversation.createdAt.toISOString(),
-      updatedAt: conversation.updatedAt.toISOString()
-    }));
+    const formattedConversations = conversations.map(conversation => {
+      const customer = conversation.project?.client;
+      const lastMessage = conversation.messages[conversation.messages.length - 1];
+      
+      return {
+        id: conversation.id,
+        project: conversation.project ? {
+          id: conversation.project.id,
+          name: conversation.project.name || 'N/A'
+        } : null,
+        customer: customer ? {
+          id: customer.id,
+          name: customer.name || 'N/A',
+          email: customer.email || 'N/A'
+        } : { id: 'unknown', name: 'Unknown Customer', email: ''},
+        messages: conversation.messages.map(message => ({
+          id: message.id,
+          content: message.content,
+          sender: {
+            id: message.sender.id,
+            name: message.sender.name,
+            role: message.sender.role
+          },
+          timestamp: message.createdAt.toISOString(),
+          read: true
+        })),
+        lastMessage: lastMessage ? {
+          content: lastMessage.content,
+          timestamp: lastMessage.createdAt.toISOString(),
+          sender: lastMessage.sender.role
+        } : { content: '', timestamp: conversation.updatedAt.toISOString(), sender: 'ADMIN' },
+        unreadCount: 0,
+        createdAt: conversation.createdAt.toISOString(),
+        updatedAt: conversation.updatedAt.toISOString()
+      };
+    });
     
     console.log(`Found ${formattedConversations.length} conversations`);
     return NextResponse.json({ conversations: formattedConversations });
