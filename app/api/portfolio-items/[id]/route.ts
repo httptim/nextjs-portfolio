@@ -12,9 +12,9 @@ interface PortfolioItemUpdateData {
   category?: string; // Client sends string, we validate and convert to enum
   technologies?: string[] | string; // Handle string or array
   features?: string[] | string;
-  demoLink?: string;
-  githubLink?: string;
-  image?: string;
+  demoUrl?: string;
+  githubUrl?: string;
+  imageUrl?: string;
   timeline?: string;
   status?: string;
   tags?: string[] | string;
@@ -69,9 +69,9 @@ export async function PUT(request: NextRequest, context: any) {
     if (categoryEnumValue !== undefined) dataToUpdate.category = categoryEnumValue;
     if (body.technologies !== undefined) dataToUpdate.technologies = ensureArray(body.technologies);
     if (body.features !== undefined) dataToUpdate.features = ensureArray(body.features);
-    if (body.demoLink !== undefined) dataToUpdate.demoUrl = body.demoLink; // Map client name to schema name
-    if (body.githubLink !== undefined) dataToUpdate.githubUrl = body.githubLink; // Map client name to schema name
-    if (body.image !== undefined) dataToUpdate.imageUrl = body.image; // Map client name to schema name
+    if (body.demoUrl !== undefined) dataToUpdate.demoUrl = body.demoUrl;
+    if (body.githubUrl !== undefined) dataToUpdate.githubUrl = body.githubUrl;
+    if (body.imageUrl !== undefined) dataToUpdate.imageUrl = body.imageUrl;
     if (body.timeline !== undefined) dataToUpdate.timeline = body.timeline;
     if (body.status !== undefined) dataToUpdate.status = body.status;
     if (body.tags !== undefined) dataToUpdate.tags = ensureArray(body.tags);

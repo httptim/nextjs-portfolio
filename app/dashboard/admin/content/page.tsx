@@ -143,22 +143,29 @@ export default function ContentManagement() {
         return []; // Return empty array for null/undefined or other types
     };
 
-    // Prepare the data payload using the helper
+    // Prepare the data payload explicitly listing fields
     const payload = {
-        ...editingProject,
+        title: editingProject.title,
+        description: editingProject.description,
+        category: editingProject.category,
         technologies: ensureArray(editingProject.technologies),
         features: ensureArray(editingProject.features),
         tags: ensureArray(editingProject.tags),
-        // Map form field names to API/DB field names
-        demoUrl: editingProject.demoLink,
-        githubUrl: editingProject.githubLink,
-        imageUrl: editingProject.image,
-        // Remove fields not expected by API 
-        demoLink: undefined,
-        githubLink: undefined,
-        image: undefined,
-        link: undefined, 
+        // Use the correct names for the API
+        demoUrl: editingProject.demoLink || null, // Send null if empty
+        githubUrl: editingProject.githubLink || null, // Send null if empty
+        imageUrl: editingProject.image || null, // Send null if empty
+        timeline: editingProject.timeline || null,
+        status: editingProject.status || null,
+        order: typeof editingProject.order === 'string' ? parseInt(editingProject.order, 10) : (editingProject.order ?? 0),
     };
+
+    // Remove fields not part of the NewPortfolioItemData or PortfolioProject schema if necessary
+    // (Although listing explicitly above is better)
+    // delete payload.id; // Don't send ID for POST
+    // delete payload.demoLink; // Already mapped
+    // delete payload.githubLink; // Already mapped
+    // delete payload.image; // Already mapped
 
     try {
       const apiUrl = isNewProject ? '/api/portfolio-items' : `/api/portfolio-items/${editingProject.id}`;
