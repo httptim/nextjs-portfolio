@@ -25,15 +25,13 @@ interface PortfolioProject {
   updatedAt: string;
 }
 
-// Categories relevant to this component
-const RELEVANT_CATEGORIES = ['FULLSTACK', 'FRONTEND', 'BACKEND', 'MOBILE'];
+// Category relevant to this component
+const CATEGORY_FILTER = 'MY_PROJECTS';
 
 export default function Projects() {
-  const [allProjects, setAllProjects] = useState<PortfolioProject[]>([]);
+  const [projects, setProjects] = useState<PortfolioProject[]>([]); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<string>('all');
-  const [displayedProjects, setDisplayedProjects] = useState<PortfolioProject[]>([]);
   
   const controls = useAnimation();
   const [ref, inView] = useInView({
@@ -41,13 +39,12 @@ export default function Projects() {
     threshold: 0.1,
   });
 
-  // Fetch all portfolio items
+  // Fetch all portfolio items and filter
   useEffect(() => {
     const fetchProjects = async () => {
       setLoading(true);
       setError(null);
       try {
-        // Assuming GET /api/portfolio-items returns all items
         const response = await fetch('/api/portfolio-items', { cache: 'no-store' });
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -55,14 +52,13 @@ export default function Projects() {
         }
         const data = await response.json();
         const fetchedProjects: PortfolioProject[] = data.projects || [];
-        // Filter only relevant categories for this section and sort by order
+        
+        // Filter for MY_PROJECTS category and sort by order
         const relevantProjects = fetchedProjects
-            .filter(p => RELEVANT_CATEGORIES.includes(p.category))
+            .filter(p => p.category.toUpperCase() === CATEGORY_FILTER)
             .sort((a, b) => a.order - b.order);
            
-        setAllProjects(relevantProjects);
-        setDisplayedProjects(relevantProjects); // Initially display all relevant projects
-        setActiveFilter('all'); // Reset filter on new data fetch
+        setProjects(relevantProjects);
 
       } catch (err) {
         console.error('Error fetching projects:', err);
@@ -80,19 +76,6 @@ export default function Projects() {
       controls.start('visible');
     }
   }, [controls, inView, loading]);
-
-  // Filter projects when activeFilter changes
-  const handleFilterChange = (filterName: string) => {
-    setActiveFilter(filterName);
-    
-    if (filterName === 'all') {
-      setDisplayedProjects(allProjects);
-    } else {
-      // Filter from the already relevant projects
-      const filtered = allProjects.filter(project => project.category.toUpperCase() === filterName.toUpperCase());
-      setDisplayedProjects(filtered);
-    }
-  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -113,12 +96,6 @@ export default function Projects() {
     },
   };
 
-  // Get unique categories present in the fetched relevant projects
-  const availableCategories = [
-      'all', 
-      ...Array.from(new Set(allProjects.map(p => p.category.toLowerCase())))
-  ];
-
   return (
     <div className="container mx-auto px-6 py-20">
       <motion.div
@@ -134,27 +111,6 @@ export default function Projects() {
           </p>
         </motion.div>
 
-        {/* Filter Buttons */}
-        {!loading && !error && allProjects.length > 0 && (
-             <motion.div variants={itemVariants} className="flex justify-center mb-10">
-                <div className="flex flex-wrap gap-2 justify-center">
-                    {availableCategories.map((category) => (
-                    <button
-                        key={category}
-                        onClick={() => handleFilterChange(category)}
-                        className={`px-4 py-2 rounded-full text-sm transition-colors ${
-                        activeFilter === category
-                            ? 'bg-sky-500 text-white'
-                            : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                        }`}
-                    >
-                        {category.charAt(0).toUpperCase() + category.slice(1)}
-                    </button>
-                    ))}
-                </div>
-            </motion.div>
-        )}
-      
         {/* Loading State */}
         {loading && (
              <div className="text-center py-10">
@@ -171,32 +127,22 @@ export default function Projects() {
         )}
 
         {/* No Projects State */}
-        {!loading && !error && allProjects.length === 0 && (
+        {!loading && !error && projects.length === 0 && (
              <motion.div 
                 variants={itemVariants}
                 className="text-center py-10"
              >
-                <p className="text-slate-300">No projects available in relevant categories yet.</p>
+                <p className="text-slate-300">No projects categorized as 'My Projects' found.</p>
              </motion.div>
         )}
-       
-        {/* No Filter Results State */} 
-        {!loading && !error && allProjects.length > 0 && displayedProjects.length === 0 && (
-          <motion.div 
-            variants={itemVariants}
-            className="text-center py-10"
-          >
-            <p className="text-slate-300">No projects found matching the '{activeFilter}' filter.</p>
-          </motion.div>
-        )}
 
-        {/* Projects Grid */}
-        {!loading && !error && displayedProjects.length > 0 && (
+        {/* Projects Grid - Use 'projects' state directly */}
+        {!loading && !error && projects.length > 0 && (
           <motion.div 
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
             variants={containerVariants} // Apply stagger to grid itself
           >
-            {displayedProjects.map((project) => (
+            {projects.map((project) => (
               <motion.div
                 key={project.id}
                 className="bg-slate-800 rounded-xl overflow-hidden shadow-lg hover:shadow-sky-900/20 transition-shadow flex flex-col"

@@ -21,29 +21,32 @@ interface PortfolioItemData {
   link?: string;
 }
 
-// GET handler to fetch all portfolio items
+// GET handler to fetch all portfolio items (Public)
 export async function GET(request: NextRequest) {
   try {
-    console.log('Portfolio Items API GET called');
+    console.log('Portfolio Items API GET called (Public)');
+    // Removed authentication check for public access
+    /* 
     const session = await getServerSession(authOptions);
-
-    // Although public portfolio items might be viewable without auth,
-    // managing them likely requires admin privileges.
     if (!session || session.user?.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Unauthorized', details: 'Admin role required to manage portfolio items' },
         { status: 403 }
       );
     }
+    */
 
     const portfolioItems = await prisma.portfolioProject.findMany({
-      orderBy: {
-        createdAt: 'desc', // Or order by a specific field like 'order' or 'title'
-      },
+      orderBy: [
+        // Add ordering if needed, e.g., by 'order' field then 'createdAt'
+        { order: 'asc' },
+        { createdAt: 'desc' }, 
+      ],
     });
 
-    console.log(`Found ${portfolioItems.length} portfolio items`);
-    return NextResponse.json({ portfolioItems }); // Use 'portfolioItems' key
+    console.log(`Found ${portfolioItems.length} portfolio items for public view`);
+    // Use a consistent key, e.g., 'projects' as expected by client components
+    return NextResponse.json({ projects: portfolioItems }); 
 
   } catch (error) {
     console.error('Error fetching portfolio items:', error);

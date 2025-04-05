@@ -186,7 +186,7 @@ model PortfolioProject {
   id           String              @id @default(cuid())
   title        String
   description  String
-  category     PortfolioCategory   @default(FULLSTACK)
+  category     PortfolioCategory   @default(MY_PROJECTS)
   technologies String[]
   imageUrl     String?
   demoUrl      String?
@@ -201,12 +201,9 @@ model PortfolioProject {
 }
 
 enum PortfolioCategory {
-  FULLSTACK
-  FRONTEND
-  BACKEND
-  MOBILE
-  FUTURE
-  PERSONAL
+  MY_PROJECTS
+  FUTURE_PROJECTS
+  PERSONAL_PROJECTS
 }
 
 // File storage for uploaded files

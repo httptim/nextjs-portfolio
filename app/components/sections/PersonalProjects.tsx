@@ -25,7 +25,7 @@ interface PortfolioProject {
   updatedAt: string;
 }
 
-const CATEGORY_FILTER = 'PERSONAL'; // Filter for this specific category
+const CATEGORY_FILTER = 'PERSONAL_PROJECTS'; // Updated Filter
 
 export default function PersonalProjects() {
   const [projects, setProjects] = useState<PortfolioProject[]>([]);

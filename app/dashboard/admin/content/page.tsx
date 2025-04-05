@@ -18,6 +18,7 @@ interface Project {
   status?: string;
   tags?: string[];
   link?: string;
+  order?: number;
 }
 
 interface ContactSubmission {
@@ -108,50 +109,85 @@ export default function ContentManagement() {
     setIsModalOpen(true);
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    // Update the editingProject state. For array fields, keep them as strings from input.
+    setEditingProject(prev => prev ? { ...prev, [name]: value } : null);
+  };
+
   const handleSaveProject = async () => {
     if (!editingProject) return;
 
-    // Basic validation on client side can be helpful
     if (!editingProject.title || !editingProject.category || !editingProject.description) {
       alert('Title, Category, and Description are required.');
       return;
     }
 
+    // Helper function to safely convert string/array to array
+    const ensureArray = (fieldValue: string | string[] | undefined | null): string[] => {
+        if (Array.isArray(fieldValue)) {
+            return fieldValue; // Already an array
+        }
+        if (typeof fieldValue === 'string') {
+            // Split string by comma, trim, and filter empty strings
+            return fieldValue.split(',').map((s: string) => s.trim()).filter(Boolean);
+        }
+        return []; // Return empty array for null/undefined or other types
+    };
+
+    // Prepare the data payload using the helper
+    const payload = {
+        ...editingProject,
+        technologies: ensureArray(editingProject.technologies),
+        features: ensureArray(editingProject.features),
+        tags: ensureArray(editingProject.tags),
+        // Map form field names to API/DB field names
+        demoUrl: editingProject.demoLink,
+        githubUrl: editingProject.githubLink,
+        imageUrl: editingProject.image,
+        // Remove fields not expected by API 
+        demoLink: undefined,
+        githubLink: undefined,
+        image: undefined,
+        link: undefined, 
+    };
+
     try {
-      let response;
       const apiUrl = isNewProject ? '/api/portfolio-items' : `/api/portfolio-items/${editingProject.id}`;
       const method = isNewProject ? 'POST' : 'PUT';
 
-      response = await fetch(apiUrl, {
+      const response = await fetch(apiUrl, {
         method: method,
         headers: {
           'Content-Type': 'application/json',
         },
-        // Send the correct field names (demoUrl, githubUrl, imageUrl)
-        body: JSON.stringify({
-          ...editingProject,
-          demoLink: undefined, // Don't send demoLink
-          githubLink: undefined, // Don't send githubLink
-          image: undefined, // Don't send image
-          demoUrl: editingProject.demoLink, // Map correctly
-          githubUrl: editingProject.githubLink, // Map correctly
-          imageUrl: editingProject.image // Map correctly
-        }),
+        body: JSON.stringify(payload), // Send the processed payload
         credentials: 'include'
       });
 
       if (!response.ok) {
-         const errorData = await response.json().catch(() => ({})); // Try to get error details
+         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.details || errorData.error || `Failed to ${isNewProject ? 'create' : 'update'} portfolio item`);
       }
 
       const data = await response.json();
+      const savedProject = data.project;
 
-      // Update state using the correct key ('project') from API response
+      const projectForState = {
+          ...savedProject,
+          demoLink: savedProject.demoUrl,
+          githubLink: savedProject.githubUrl,
+          image: savedProject.imageUrl,
+          // Ensure array fields are arrays for state consistency
+          technologies: ensureArray(savedProject.technologies),
+          features: ensureArray(savedProject.features),
+          tags: ensureArray(savedProject.tags),
+      };
+
       if (isNewProject) {
-        setProjects([...projects, data.project]);
+        setProjects([...projects, projectForState]);
       } else {
-        setProjects(projects.map(p => (p.id === data.project.id ? data.project : p)));
+        setProjects(projects.map(p => (p.id === projectForState.id ? projectForState : p)));
       }
 
       setIsModalOpen(false);
@@ -277,17 +313,17 @@ export default function ContentManagement() {
 
             <div className="mb-6">
               <div className="flex flex-wrap gap-2">
-                {['all', 'fullstack', 'frontend', 'backend', 'mobile', 'future', 'personal'].map((category) => (
+                {['all', 'MY_PROJECTS', 'FUTURE_PROJECTS', 'PERSONAL_PROJECTS'].map((category) => (
                   <button
                     key={category}
-                    onClick={() => setSelectedCategory(category)}
+                    onClick={() => setSelectedCategory(category === 'all' ? 'all' : category)}
                     className={`px-4 py-2 rounded-full text-sm transition-colors ${
                       selectedCategory === category
                         ? 'bg-sky-500 text-white'
                         : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                     }`}
                   >
-                    {category.charAt(0).toUpperCase() + category.slice(1)} Projects
+                    {category === 'all' ? 'All Projects' : category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                   </button>
                 ))}
               </div>
@@ -492,7 +528,7 @@ export default function ContentManagement() {
                     type="text"
                     id="title"
                     value={editingProject.title}
-                    onChange={(e) => setEditingProject({ ...editingProject, title: e.target.value })}
+                    onChange={handleInputChange}
                     className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
                   />
                 </div>
@@ -502,17 +538,15 @@ export default function ContentManagement() {
                     Category
                   </label>
                   <select
+                    name="category"
                     id="category"
                     value={editingProject.category}
-                    onChange={(e) => setEditingProject({ ...editingProject, category: e.target.value })}
+                    onChange={handleInputChange}
                     className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
                   >
-                    <option value="fullstack">Fullstack</option>
-                    <option value="frontend">Frontend</option>
-                    <option value="backend">Backend</option>
-                    <option value="mobile">Mobile</option>
-                    <option value="future">Future Project</option>
-                    <option value="personal">Personal Project</option>
+                    <option value="MY_PROJECTS">My Projects</option>
+                    <option value="FUTURE_PROJECTS">Future Projects</option>
+                    <option value="PERSONAL_PROJECTS">Personal Projects</option>
                   </select>
                 </div>
 
@@ -524,7 +558,7 @@ export default function ContentManagement() {
                     id="description"
                     rows={3}
                     value={editingProject.description}
-                    onChange={(e) => setEditingProject({ ...editingProject, description: e.target.value })}
+                    onChange={handleInputChange}
                     className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
                   />
                 </div>
@@ -537,111 +571,114 @@ export default function ContentManagement() {
                     type="text"
                     id="technologies"
                     value={editingProject.technologies.join(', ')}
-                    onChange={(e) => setEditingProject({ 
-                      ...editingProject, 
-                      technologies: e.target.value.split(',').map(tech => tech.trim()).filter(Boolean)
-                    })}
+                    onChange={handleInputChange}
                     className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
                   />
                 </div>
 
-                {(editingProject.category === 'fullstack' || 
-                  editingProject.category === 'frontend' || 
-                  editingProject.category === 'backend' || 
-                  editingProject.category === 'mobile') && (
-                  <>
-                    <div>
-                      <label htmlFor="demoLink" className="block text-sm font-medium text-slate-300">
-                        Demo Link
-                      </label>
-                      <input
-                        type="text"
-                        id="demoLink"
-                        value={editingProject.demoLink || ''}
-                        onChange={(e) => setEditingProject({ ...editingProject, demoLink: e.target.value })}
-                        className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                      />
-                    </div>
+                <div>
+                  <label htmlFor="demoLink" className="block text-sm font-medium text-slate-300">
+                    Demo Link
+                  </label>
+                  <input
+                    type="text"
+                    id="demoLink"
+                    value={editingProject.demoLink || ''}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
 
-                    <div>
-                      <label htmlFor="githubLink" className="block text-sm font-medium text-slate-300">
-                        GitHub Link
-                      </label>
-                      <input
-                        type="text"
-                        id="githubLink"
-                        value={editingProject.githubLink || ''}
-                        onChange={(e) => setEditingProject({ ...editingProject, githubLink: e.target.value })}
-                        className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="features" className="block text-sm font-medium text-slate-300">
-                        Features (comma separated)
-                      </label>
-                      <input
-                        type="text"
-                        id="features"
-                        value={editingProject.features?.join(', ') || ''}
-                        onChange={(e) => setEditingProject({ 
-                          ...editingProject, 
-                          features: e.target.value.split(',').map(feature => feature.trim()).filter(Boolean)
-                        })}
-                        className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                      />
-                    </div>
-                  </>
-                )}
+                <div>
+                  <label htmlFor="githubLink" className="block text-sm font-medium text-slate-300">
+                    GitHub Link
+                  </label>
+                  <input
+                    type="text"
+                    id="githubLink"
+                    value={editingProject.githubLink || ''}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="features" className="block text-sm font-medium text-slate-300">
+                    Features (comma separated)
+                  </label>
+                  <input
+                    type="text"
+                    id="features"
+                    value={Array.isArray(editingProject.features) ? editingProject.features.join(', ') : (editingProject.features || '')}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
 
-                {editingProject.category === 'future' && (
-                  <>
-                    <div>
-                      <label htmlFor="timeline" className="block text-sm font-medium text-slate-300">
-                        Timeline
-                      </label>
-                      <input
-                        type="text"
-                        id="timeline"
-                        value={editingProject.timeline || ''}
-                        onChange={(e) => setEditingProject({ ...editingProject, timeline: e.target.value })}
-                        className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                      />
-                    </div>
+                <div>
+                  <label htmlFor="image" className="block text-sm font-medium text-slate-300">
+                    Image URL
+                  </label>
+                  <input
+                    type="text"
+                    id="image"
+                    value={editingProject.image || ''}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
 
-                    <div>
-                      <label htmlFor="status" className="block text-sm font-medium text-slate-300">
-                        Status
-                      </label>
-                      <select
-                        id="status"
-                        value={editingProject.status || 'planning'}
-                        onChange={(e) => setEditingProject({ ...editingProject, status: e.target.value })}
-                        className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                      >
-                        <option value="planning">Planning Phase</option>
-                        <option value="research">Research Phase</option>
-                        <option value="prototyping">Prototyping</option>
-                        <option value="in-progress">In Progress</option>
-                      </select>
-                    </div>
-                  </>
-                )}
+                <div>
+                  <label htmlFor="timeline" className="block text-sm font-medium text-slate-300">
+                    Timeline
+                  </label>
+                  <input
+                    type="text"
+                    id="timeline"
+                    value={editingProject.timeline || ''}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
 
-                {editingProject.category === 'personal' && (
-                  <div>
-                    <label htmlFor="link" className="block text-sm font-medium text-slate-300">
-                      Project Link
-                    </label>
-                    <input
-                      type="text"
-                      id="link"
-                      value={editingProject.link || ''}
-                      onChange={(e) => setEditingProject({ ...editingProject, link: e.target.value })}
-                      className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                    />
-                  </div>
-                )}
+                <div>
+                  <label htmlFor="status" className="block text-sm font-medium text-slate-300">
+                    Status
+                  </label>
+                  <input
+                    type="text"
+                    id="status"
+                    value={editingProject.status || ''}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="tags" className="block text-sm font-medium text-slate-300">
+                    Tags (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    id="tags"
+                    value={Array.isArray(editingProject.tags) ? editingProject.tags.join(', ') : (editingProject.tags || '')}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="order" className="block text-sm font-medium text-slate-300">
+                    Display Order
+                  </label>
+                  <input
+                    type="number"
+                    id="order"
+                    value={editingProject.order || 0}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
               </div>
 
               <div className="mt-6 flex justify-end space-x-3">
