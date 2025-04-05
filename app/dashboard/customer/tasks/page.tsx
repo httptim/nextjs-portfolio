@@ -1,8 +1,8 @@
-// app/dashboard/customer/tasks/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 
 interface Task {
   id: string;
@@ -17,9 +17,16 @@ interface Task {
   assignedTo: string;
 }
 
+interface Project {
+  id: string;
+  name: string;
+}
+
 export default function CustomerTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'todo' | 'in-progress' | 'review' | 'completed'>('all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
   const [projectFilter, setProjectFilter] = useState<string>('all');
@@ -28,94 +35,37 @@ export default function CustomerTasks() {
 
   // Load tasks data
   useEffect(() => {
-    // In a real app, this would be an API call
-    const loadTasks = () => {
-      setTasks([
-        {
-          id: 't1',
-          title: 'Design homepage mockup',
-          description: 'Create a modern homepage design with hero section, featured products, and testimonials.',
-          projectId: 'p1',
-          projectName: 'E-Commerce Website',
-          priority: 'high',
-          status: 'in-progress',
-          dueDate: '2025-04-10',
-          createdAt: '2025-04-01',
-          assignedTo: 'Designer',
-        },
-        {
-          id: 't2',
-          title: 'Implement user authentication',
-          description: 'Set up user registration, login, and password recovery functionality.',
-          projectId: 'p1',
-          projectName: 'E-Commerce Website',
-          priority: 'high',
-          status: 'todo',
-          dueDate: '2025-04-15',
-          createdAt: '2025-04-01',
-          assignedTo: 'Developer',
-        },
-        {
-          id: 't3',
-          title: 'Design mobile app wireframes',
-          description: 'Create wireframes for all screens of the mobile application.',
-          projectId: 'p2',
-          projectName: 'Mobile App UI/UX',
-          priority: 'medium',
-          status: 'todo',
-          dueDate: '2025-04-12',
-          createdAt: '2025-03-30',
-          assignedTo: 'Designer',
-        },
-        {
-          id: 't4',
-          title: 'Set up product database schema',
-          description: 'Design and implement database schema for products, categories, and inventory.',
-          projectId: 'p1',
-          projectName: 'E-Commerce Website',
-          priority: 'medium',
-          status: 'completed',
-          dueDate: '2025-04-05',
-          createdAt: '2025-03-25',
-          assignedTo: 'Developer',
-        },
-        {
-          id: 't5',
-          title: 'Implement checkout process',
-          description: 'Create multi-step checkout process with address collection and payment processing.',
-          projectId: 'p1',
-          projectName: 'E-Commerce Website',
-          priority: 'high',
-          status: 'review',
-          dueDate: '2025-04-20',
-          createdAt: '2025-04-05',
-          assignedTo: 'Developer',
-        },
-      ]);
-      setLoading(false);
+    const fetchTasks = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (filter !== 'all') params.append('status', filter);
+        if (priorityFilter !== 'all') params.append('priority', priorityFilter);
+        if (projectFilter !== 'all') params.append('project', projectFilter);
+        if (searchTerm) params.append('search', searchTerm);
+
+        const response = await fetch(`/api/customer/tasks?${params.toString()}`);
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch tasks');
+        }
+
+        const data = await response.json();
+        setTasks(data.tasks);
+        setProjects(data.projects);
+      } catch (err) {
+        console.error('Error fetching tasks:', err);
+        setError(err instanceof Error ? err.message : 'An error occurred while fetching tasks');
+      } finally {
+        setLoading(false);
+      }
     };
 
-    loadTasks();
-  }, []);
-
-  // Get unique projects for filter
-  const projects = [...new Set(tasks.map(task => task.projectId))].map(projectId => {
-    const project = tasks.find(task => task.projectId === projectId);
-    return {
-      id: projectId,
-      name: project ? project.projectName : 'Unknown Project',
-    };
-  });
-
-  // Filter tasks
-  const filteredTasks = tasks
-    .filter(task => filter === 'all' || task.status === filter)
-    .filter(task => priorityFilter === 'all' || task.priority === priorityFilter)
-    .filter(task => projectFilter === 'all' || task.projectId === projectFilter)
-    .filter(task => 
-      task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.description.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    fetchTasks();
+  }, [filter, priorityFilter, projectFilter, searchTerm]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -145,9 +95,42 @@ export default function CustomerTasks() {
     }
   };
 
-  if (loading) {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const getRelativeDueDate = (dueDate: string) => {
+    const due = new Date(dueDate);
+    const today = new Date();
+    
+    // Set time to midnight for proper day comparison
+    today.setHours(0, 0, 0, 0);
+    const dueDay = new Date(due);
+    dueDay.setHours(0, 0, 0, 0);
+    
+    const diffTime = dueDay.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return `Overdue by ${Math.abs(diffDays)} day${Math.abs(diffDays) !== 1 ? 's' : ''}`;
+    } else if (diffDays === 0) {
+      return 'Due today';
+    } else if (diffDays === 1) {
+      return 'Due tomorrow';
+    } else if (diffDays < 7) {
+      return `Due in ${diffDays} days`;
+    } else {
+      return `Due on ${formatDate(dueDate)}`;
+    }
+  };
+
+  if (loading && tasks.length === 0) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sky-500"></div>
       </div>
     );
@@ -250,8 +233,21 @@ export default function CustomerTasks() {
               </div>
             </div>
 
+            {/* Error Message */}
+            {error && (
+              <div className="mb-6 p-3 bg-red-500/20 text-red-500 rounded-md">
+                {error}
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="ml-2 underline"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+
             {/* Tasks */}
-            {filteredTasks.length === 0 ? (
+            {tasks.length === 0 ? (
               <div className="text-center py-10">
                 <p className="text-slate-400">No tasks found matching your filters.</p>
               </div>
@@ -278,13 +274,14 @@ export default function CustomerTasks() {
                     </tr>
                   </thead>
                   <tbody className="bg-slate-800 divide-y divide-slate-700">
-                    {filteredTasks.map((task) => (
+                    {tasks.map((task) => (
                       <motion.tr
                         key={task.id}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.3 }}
                         className="hover:bg-slate-700 cursor-pointer"
+                        onClick={() => window.location.href = `/dashboard/customer/tasks/${task.id}`}
                       >
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium text-white">{task.title}</div>
@@ -306,7 +303,7 @@ export default function CustomerTasks() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
-                          {task.dueDate}
+                          {getRelativeDueDate(task.dueDate)}
                         </td>
                       </motion.tr>
                     ))}
@@ -315,42 +312,40 @@ export default function CustomerTasks() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredTasks.map((task) => (
-                  <motion.div
-                    key={task.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3 }}
-                    className="bg-slate-700 rounded-lg overflow-hidden shadow"
-                  >
-                    <div className="p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <h3 className="text-md font-medium text-white">{task.title}</h3>
-                        <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(task.priority)}`}>
-                          {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-                        </span>
+                {tasks.map((task) => (
+                  <Link key={task.id} href={`/dashboard/customer/tasks/${task.id}`}>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3 }}
+                      className="bg-slate-700 rounded-lg overflow-hidden shadow hover:bg-slate-650 transition-colors"
+                    >
+                      <div className="p-4">
+                        <div className="flex justify-between items-start mb-3">
+                          <h3 className="text-md font-medium text-white">{task.title}</h3>
+                          <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(task.priority)}`}>
+                            {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                          </span>
+                        </div>
+                        
+                        <p className="text-xs text-slate-300 mb-3 line-clamp-2">{task.description}</p>
+                        
+                        <div className="text-xs text-slate-400 mb-3">
+                          <div>Project: {task.projectName}</div>
+                          <div>Assigned to: {task.assignedTo}</div>
+                          <div>{getRelativeDueDate(task.dueDate)}</div>
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                          <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(task.status)}`}>
+                            {task.status === 'todo' ? 'To Do' : 
+                             task.status === 'in-progress' ? 'In Progress' :
+                             task.status === 'review' ? 'In Review' : 'Completed'}
+                          </span>
+                        </div>
                       </div>
-                      
-                      <p className="text-xs text-slate-300 mb-3 line-clamp-2">{task.description}</p>
-                      
-                      <div className="text-xs text-slate-400 mb-3">
-                        <div>Project: {task.projectName}</div>
-                        <div>Assigned to: {task.assignedTo}</div>
-                        <div>Due date: {task.dueDate}</div>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(task.status)}`}>
-                          {task.status === 'todo' ? 'To Do' : 
-                           task.status === 'in-progress' ? 'In Progress' :
-                           task.status === 'review' ? 'In Review' : 'Completed'}
-                        </span>
-                        <button className="text-xs text-sky-400 hover:text-sky-300">
-                          View Details
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
+                    </motion.div>
+                  </Link>
                 ))}
               </div>
             )}

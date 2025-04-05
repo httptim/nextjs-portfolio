@@ -79,6 +79,9 @@ model Task {
   createdBy   User       @relation("CreatedBy", fields: [createdById], references: [id])
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  
+  // Relations
+  comments    TaskComment[]
 }
 
 enum Priority {
@@ -94,20 +97,33 @@ enum TaskStatus {
   COMPLETED
 }
 
+// Task Comment model
+model TaskComment {
+  id        String   @id @default(cuid())
+  content   String
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // Invoice model
 model Invoice {
-  id          String       @id @default(cuid())
-  number      String       @unique
-  amount      Float
-  status      InvoiceStatus @default(UNPAID)
-  date        DateTime
-  dueDate     DateTime
-  projectId   String
-  project     Project      @relation(fields: [projectId], references: [id])
-  clientId    String
-  client      User         @relation(fields: [clientId], references: [id])
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id                String       @id @default(cuid())
+  number            String       @unique
+  amount            Float
+  status            InvoiceStatus @default(UNPAID)
+  date              DateTime
+  dueDate           DateTime
+  projectId         String
+  project           Project      @relation(fields: [projectId], references: [id])
+  clientId          String
+  client            User         @relation(fields: [clientId], references: [id])
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  paypalOrderId     String?      // Added for PayPal integration
+  paypalTransactionId String?    // Added for PayPal integration
 
   // Relations
   items       InvoiceItem[]
@@ -142,6 +158,7 @@ model Payment {
   userId      String
   user        User     @relation(fields: [userId], references: [id])
   createdAt   DateTime @default(now())
+  transactionReference String?
 }
 
 // Conversation model
