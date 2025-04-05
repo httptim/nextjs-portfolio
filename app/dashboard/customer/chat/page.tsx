@@ -1,11 +1,10 @@
 // app/dashboard/customer/chat/page.tsx
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { formatRelativeTime, formatMessageDate, formatTime } from '@/lib/utils/date-utils';
-import Link from 'next/link';
 
 interface Message {
   id: string;
@@ -37,213 +36,93 @@ export default function CustomerChat() {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
-  const [lastMessageTimestamp, setLastMessageTimestamp] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
-  const router = useRouter();
 
-  // Function to fetch conversations
-  const fetchConversations = useCallback(async () => {
-    try {
-      const projectId = searchParams.get('project');
-      const endpoint = projectId 
-        ? `/api/conversations?project=${projectId}` 
-        : '/api/conversations';
-      
-      const response = await fetch(endpoint);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch conversations');
-      }
-      
-      const data = await response.json();
-      setConversations(data.conversations);
-      
-      // If project ID is specified in URL and we have conversations, select the one for that project
-      if (projectId && data.conversations.length > 0) {
-        const projectConversation = data.conversations.find(
-          (c: Conversation) => c.projectId === projectId
-        );
+  // Fetch conversations on component mount
+  useEffect(() => {
+    const fetchConversations = async () => {
+      setLoading(true);
+      try {
+        const projectId = searchParams.get('project');
+        const endpoint = projectId 
+          ? `/api/conversations?project=${projectId}` 
+          : '/api/conversations';
         
-        if (projectConversation) {
-          setSelectedConversation(projectConversation.id);
-        } else if (data.conversations.length > 0) {
-          // If no conversation for that project, select the first one
-          setSelectedConversation(data.conversations[0].id);
+        const response = await fetch(endpoint);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch conversations');
         }
-      } else if (data.conversations.length > 0 && !selectedConversation) {
-        // Select the first conversation by default if none is selected
-        setSelectedConversation(data.conversations[0].id);
-      }
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
-      setErrorMessage('Failed to load conversations. Please try again later.');
-    } finally {
-      setLoading(false);
-    }
-  }, [searchParams, selectedConversation]);
-
-  // Function to fetch messages for the selected conversation
-  const fetchMessages = useCallback(async () => {
-    if (!selectedConversation) return;
-    
-    try {
-      const response = await fetch(`/api/conversations/${selectedConversation}/messages`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch messages');
-      }
-      
-      const data = await response.json();
-      
-      // Sort messages by timestamp
-      const sortedMessages = [...data.messages].sort((a, b) => 
-        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-      );
-      
-      setMessages(sortedMessages);
-      
-      // Update last message timestamp for polling
-      if (sortedMessages.length > 0) {
-        setLastMessageTimestamp(sortedMessages[sortedMessages.length - 1].timestamp);
-      }
-      
-      // Update unread count in conversations list
-      setConversations(prevConversations => 
-        prevConversations.map(conversation => 
-          conversation.id === selectedConversation 
-            ? { ...conversation, unreadCount: 0 } 
-            : conversation
-        )
-      );
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-      setErrorMessage('Failed to load messages. Please try again later.');
-    }
-  }, [selectedConversation]);
-
-  // Function to poll for new messages
-  const pollNewMessages = useCallback(async () => {
-    if (!selectedConversation || !lastMessageTimestamp) return;
-    
-    try {
-      const response = await fetch(`/api/conversations/${selectedConversation}/messages?since=${encodeURIComponent(lastMessageTimestamp)}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to poll for new messages');
-      }
-      
-      const data = await response.json();
-      
-      if (data.messages && data.messages.length > 0) {
-        // Add new messages to the state
-        setMessages(prevMessages => {
-          // Filter out any messages we already have to avoid duplicates
-          const existingMessageIds = new Set(prevMessages.map(m => m.id));
-          const newMessages = data.messages.filter(m => !existingMessageIds.has(m.id));
-          
-          if (newMessages.length === 0) return prevMessages;
-          
-          const updatedMessages = [...prevMessages, ...newMessages];
-          
-          // Update last message timestamp
-          const latestMessage = updatedMessages.reduce(
-            (latest, msg) => new Date(msg.timestamp) > new Date(latest.timestamp) ? msg : latest,
-            updatedMessages[0]
+        
+        const data = await response.json();
+        setConversations(data.conversations);
+        
+        // If project ID is specified in URL and we have conversations, select the one for that project
+        if (projectId && data.conversations.length > 0) {
+          const projectConversation = data.conversations.find(
+            (c: Conversation) => c.projectId === projectId
           );
           
-          setLastMessageTimestamp(latestMessage.timestamp);
-          
-          return updatedMessages;
-        });
+          if (projectConversation) {
+            setSelectedConversation(projectConversation.id);
+          } else if (data.conversations.length > 0) {
+            // If no conversation for that project, select the first one
+            setSelectedConversation(data.conversations[0].id);
+          }
+        } else if (data.conversations.length > 0) {
+          // Select the first conversation by default
+          setSelectedConversation(data.conversations[0].id);
+        }
+      } catch (error) {
+        console.error('Error fetching conversations:', error);
+        setErrorMessage('Failed to load conversations. Please try again later.');
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error polling for new messages:', error);
-      // Don't show error message for polling issues to avoid UI noise
-    }
-  }, [selectedConversation, lastMessageTimestamp]);
-
-  // Function to create a new conversation for a project
-  const createConversation = useCallback(async (projectId: string) => {
-    try {
-      const response = await fetch('/api/conversations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ projectId }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to create conversation');
-      }
-      
-      const data = await response.json();
-      return data.conversationId;
-    } catch (error) {
-      console.error('Error creating conversation:', error);
-      setErrorMessage('Failed to create a new conversation. Please try again.');
-      return null;
-    }
-  }, []);
-
-  // Initial data loading
-  useEffect(() => {
-    fetchConversations();
-  }, [fetchConversations]);
-
-  // Fetch messages when selected conversation changes
-  useEffect(() => {
-    fetchMessages();
-  }, [fetchMessages, selectedConversation]);
-
-  // Set up polling for new messages
-  useEffect(() => {
-    // Clear any existing polling interval
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-    }
-    
-    // Don't set up polling if no conversation is selected
-    if (!selectedConversation) return;
-    
-    // Poll for new messages every 5 seconds
-    const interval = setInterval(() => {
-      pollNewMessages();
-    }, 5000);
-    
-    setPollingInterval(interval);
-    
-    // Clean up on unmount or when selected conversation changes
-    return () => {
-      clearInterval(interval);
     };
-  }, [selectedConversation, pollNewMessages]);
 
-  // Scroll to bottom of messages when new messages arrive
+    fetchConversations();
+  }, [searchParams]);
+
+  // Fetch messages when a conversation is selected
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (!selectedConversation) return;
+      
+      try {
+        const response = await fetch(`/api/conversations/${selectedConversation}/messages`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch messages');
+        }
+        
+        const data = await response.json();
+        setMessages(data.messages);
+        
+        // Update unread count in conversations list
+        setConversations(prevConversations => 
+          prevConversations.map(conversation => 
+            conversation.id === selectedConversation 
+              ? { ...conversation, unreadCount: 0 } 
+              : conversation
+          )
+        );
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        setErrorMessage('Failed to load messages. Please try again later.');
+      }
+    };
+
+    fetchMessages();
+  }, [selectedConversation]);
+
+  // Scroll to bottom of messages when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
-
-  // Handle URL parameters on mount
-  useEffect(() => {
-    const projectId = searchParams.get('project');
-    if (projectId && conversations.length === 0) {
-      // If project ID is in URL but no conversations exist, create a new one
-      const initConversation = async () => {
-        const conversationId = await createConversation(projectId);
-        if (conversationId) {
-          setSelectedConversation(conversationId);
-          fetchConversations(); // Refresh the conversations list
-        }
-      };
-      
-      initConversation();
-    }
-  }, [searchParams, conversations.length, createConversation, fetchConversations]);
 
   // Send a new message
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -270,9 +149,6 @@ export default function CustomerChat() {
       // Add the new message to the messages list
       setMessages(prevMessages => [...prevMessages, data.message]);
       
-      // Update the last message timestamp
-      setLastMessageTimestamp(data.message.timestamp);
-      
       // Update the last message in conversations list
       setConversations(prevConversations => 
         prevConversations.map(conversation => 
@@ -295,18 +171,6 @@ export default function CustomerChat() {
       setErrorMessage('Failed to send message. Please try again.');
     } finally {
       setSendingMessage(false);
-    }
-  };
-
-  // Start a new conversation from project
-  const handleStartNewConversation = async () => {
-    const projectId = searchParams.get('project');
-    if (!projectId) return;
-    
-    const conversationId = await createConversation(projectId);
-    if (conversationId) {
-      setSelectedConversation(conversationId);
-      await fetchConversations();
     }
   };
 
@@ -378,19 +242,7 @@ export default function CustomerChat() {
               <div>
                 {filteredConversations.length === 0 ? (
                   <div className="p-4 text-center text-slate-400">
-                    {searchParams.get('project') ? (
-                      <>
-                        <p className="mb-4">No conversation exists for this project yet.</p>
-                        <button
-                          onClick={handleStartNewConversation}
-                          className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-md text-sm transition-colors"
-                        >
-                          Start New Conversation
-                        </button>
-                      </>
-                    ) : (
-                      'No conversations found.'
-                    )}
+                    No conversations found.
                   </div>
                 ) : (
                   filteredConversations.map((conversation) => (
@@ -446,16 +298,9 @@ export default function CustomerChat() {
                         <h3 className="text-md font-medium text-white">
                           {conversations.find(c => c.id === selectedConversation)?.name}
                         </h3>
-                        <div className="flex items-center text-xs text-slate-400">
-                          <span>{conversations.find(c => c.id === selectedConversation)?.project}</span>
-                          <span className="mx-2">•</span>
-                          <Link 
-                            href={`/dashboard/customer/projects/${conversations.find(c => c.id === selectedConversation)?.projectId}`}
-                            className="text-sky-400 hover:text-sky-300"
-                          >
-                            View Project
-                          </Link>
-                        </div>
+                        <p className="text-xs text-slate-400">
+                          {conversations.find(c => c.id === selectedConversation)?.project}
+                        </p>
                       </div>
                       <div>
                         <button className="p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-700 transition-colors">
@@ -496,22 +341,8 @@ export default function CustomerChat() {
                                     }`}
                                   >
                                     <div className="text-sm">{message.content}</div>
-                                    <div className="mt-1 flex justify-end items-center space-x-1 text-xs opacity-70">
-                                      <span>{formatTime(message.timestamp)}</span>
-                                      {/* Add read receipt indicator */}
-                                      {message.sender === 'customer' && (
-                                        <span>
-                                          {message.read ? (
-                                            <svg className="h-3 w-3 text-sky-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                          ) : (
-                                            <svg className="h-3 w-3 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                          )}
-                                        </span>
-                                      )}
+                                    <div className="mt-1 text-xs text-right opacity-70">
+                                      {formatTime(message.timestamp)}
                                     </div>
                                   </div>
                                 </div>
