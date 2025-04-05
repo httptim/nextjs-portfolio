@@ -5,9 +5,9 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
 // DELETE handler for a specific contact submission by ID
-export async function DELETE(request: NextRequest, context: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
    try {
-    const id = context.params.id;
+    const id = params.id;
     console.log(`Contact Submissions API DELETE called for ID: ${id}`);
     const session = await getServerSession(authOptions);
 
@@ -51,9 +51,9 @@ export async function DELETE(request: NextRequest, context: { params: { id: stri
 }
 
 // PATCH handler to update a specific contact submission (e.g., mark as read)
-export async function PATCH(request: NextRequest, context: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const id = context.params.id;
+    const id = params.id;
     console.log(`Contact Submissions API PATCH called for ID: ${id}`);
     const session = await getServerSession(authOptions);
 
