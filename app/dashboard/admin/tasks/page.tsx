@@ -106,13 +106,20 @@ export default function TasksPage() {
 
   // Filtered and searched tasks
   const filteredTasks = tasks
-    .filter(task => filter === 'all' || task.status === filter)
-    .filter(task => priorityFilter === 'all' || task.priority.toLowerCase() === priorityFilter)
-    .filter(task => 
-      task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.project.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  .filter(task => {
+    if (filter === 'all') return true;
+    
+    // Map filter value to corresponding task status format
+    const statusMap: Record<string, string> = {
+      'todo': 'TODO',
+      'in-progress': 'IN_PROGRESS',
+      'review': 'REVIEW',
+      'completed': 'COMPLETED'
+    };
+    
+    return task.status === statusMap[filter];
+  })
+  // Rest of your filtering logic...
 
   const handleAddTask = () => {
     const tomorrow = new Date();
