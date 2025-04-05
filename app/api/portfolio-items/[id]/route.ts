@@ -30,9 +30,10 @@ const ensureArray = (field: string[] | string | undefined): string[] => {
 };
 
 // PUT handler to update an existing portfolio item
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+// Temporarily use 'any' for the second argument for diagnostics
+export async function PUT(request: NextRequest, context: any) {
   try {
-    const id = params.id;
+    const id = context.params?.id; // Safely access id via optional chaining
     if (!id) {
       return NextResponse.json({ error: 'Bad Request', details: 'Missing project ID.' }, { status: 400 });
     }
@@ -119,9 +120,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 }
 
 // DELETE handler to remove a portfolio item
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+// Temporarily use 'any' for the second argument for diagnostics
+export async function DELETE(request: NextRequest, context: any) {
   try {
-     const id = params.id;
+     const id = context.params?.id; // Safely access id via optional chaining
     if (!id) {
       return NextResponse.json({ error: 'Bad Request', details: 'Missing project ID.' }, { status: 400 });
     }
