@@ -139,7 +139,7 @@ export default function TestimonialsManagementPage() {
   
   // Open modal to edit an existing testimonial
   const handleEditTestimonial = (testimonial: Testimonial) => {
-    setFormData({
+    const newFormData = {
       content: testimonial.content,
       rating: testimonial.rating,
       clientId: testimonial.clientId,
@@ -147,7 +147,10 @@ export default function TestimonialsManagementPage() {
       company: testimonial.company || '',
       isActive: testimonial.isActive,
       order: testimonial.order,
-    });
+    };
+    setFormData(newFormData);
+    // Debug log 1: Log the data being set
+    console.log('Setting formData in handleEditTestimonial:', newFormData);
     setSelectedTestimonial(testimonial);
     setIsNewTestimonial(false);
     setIsModalOpen(true);
@@ -278,6 +281,11 @@ export default function TestimonialsManagementPage() {
       </div>
     );
   };
+
+  // Debug log 2: Log formData just before returning JSX when modal is open
+  if (isModalOpen) {
+    console.log('Rendering modal with formData:', formData);
+  }
 
   if (loading) {
     return (
@@ -449,161 +457,163 @@ export default function TestimonialsManagementPage() {
 
       {/* Add/Edit Testimonial Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-slate-900/80">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-slate-800 rounded-lg shadow-xl max-w-lg w-full p-6"
-          >
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-medium text-white">
-                {isNewTestimonial ? 'Add New Testimonial' : 'Edit Testimonial'}
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white"
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="clientId" className="block text-sm font-medium text-slate-300">
-                  Client
-                </label>
-                <select
-                  id="clientId"
-                  name="clientId"
-                  value={formData.clientId}
-                  onChange={handleInputChange}
-                  className={`mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 ${
-                    formErrors.clientId ? 'border border-red-500 focus:ring-red-500' : 'focus:ring-sky-500'
-                  }`}
+        <>
+          <div className="fixed inset-0 flex items-center justify-center z-50 bg-slate-900/80">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-slate-800 rounded-lg shadow-xl max-w-lg w-full p-6"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-medium text-white">
+                  {isNewTestimonial ? 'Add New Testimonial' : 'Edit Testimonial'}
+                </h3>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="text-slate-400 hover:text-white"
                 >
-                  <option value="" disabled>Select a client</option>
-                  {customers.map(customer => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name} {customer.company ? `(${customer.company})` : ''}
-                    </option>
-                  ))}
-                </select>
-                {formErrors.clientId && (
-                  <p className="mt-1 text-sm text-red-500">{formErrors.clientId}</p>
-                )}
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
 
-              <div>
-                <label htmlFor="content" className="block text-sm font-medium text-slate-300">
-                  Testimonial Content
-                </label>
-                <textarea
-                  id="content"
-                  name="content"
-                  value={formData.content}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className={`mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 ${
-                    formErrors.content ? 'border border-red-500 focus:ring-red-500' : 'focus:ring-sky-500'
-                  }`}
-                  placeholder="Enter testimonial text"
-                ></textarea>
-                {formErrors.content && (
-                  <p className="mt-1 text-sm text-red-500">{formErrors.content}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300">
-                  Rating
-                </label>
-                {renderStarRating()}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div>
-                  <label htmlFor="position" className="block text-sm font-medium text-slate-300">
-                    Position (optional)
+                  <label htmlFor="clientId" className="block text-sm font-medium text-slate-300">
+                    Client
                   </label>
-                  <input
-                    type="text"
-                    id="position"
-                    name="position"
-                    value={formData.position}
+                  <select
+                    id="clientId"
+                    name="clientId"
+                    value={formData.clientId}
                     onChange={handleInputChange}
-                    className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                    placeholder="E.g. CEO, Marketing Director"
-                  />
+                    className={`mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 ${
+                      formErrors.clientId ? 'border border-red-500 focus:ring-red-500' : 'focus:ring-sky-500'
+                    }`}
+                  >
+                    <option value="" disabled>Select a client</option>
+                    {customers.map(customer => (
+                      <option key={customer.id} value={customer.id}>
+                        {customer.name} {customer.company ? `(${customer.company})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.clientId && (
+                    <p className="mt-1 text-sm text-red-500">{formErrors.clientId}</p>
+                  )}
                 </div>
 
                 <div>
-                  <label htmlFor="company" className="block text-sm font-medium text-slate-300">
-                    Company (optional)
+                  <label htmlFor="content" className="block text-sm font-medium text-slate-300">
+                    Testimonial Content
                   </label>
-                  <input
-                    type="text"
-                    id="company"
-                    name="company"
-                    value={formData.company}
+                  <textarea
+                    id="content"
+                    name="content"
+                    value={formData.content}
                     onChange={handleInputChange}
-                    className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                    placeholder="Company name"
-                  />
+                    rows={4}
+                    className={`mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 ${
+                      formErrors.content ? 'border border-red-500 focus:ring-red-500' : 'focus:ring-sky-500'
+                    }`}
+                    placeholder="Enter testimonial text"
+                  ></textarea>
+                  {formErrors.content && (
+                    <p className="mt-1 text-sm text-red-500">{formErrors.content}</p>
+                  )}
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="order" className="block text-sm font-medium text-slate-300">
-                    Display Order
+                  <label className="block text-sm font-medium text-slate-300">
+                    Rating
                   </label>
-                  <input
-                    type="number"
-                    id="order"
-                    name="order"
-                    value={formData.order}
-                    onChange={handleInputChange}
-                    min="0"
-                    className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                    placeholder="0"
-                  />
-                  <p className="mt-1 text-xs text-slate-400">Lower numbers appear first</p>
+                  {renderStarRating()}
                 </div>
 
-                <div className="flex items-center h-full pt-6">
-                  <input
-                    type="checkbox"
-                    id="isActive"
-                    name="isActive"
-                    checked={formData.isActive}
-                    onChange={handleCheckboxChange}
-                    className="h-4 w-4 text-sky-500 bg-slate-700 border-slate-600 rounded focus:ring-sky-500"
-                  />
-                  <label htmlFor="isActive" className="ml-2 block text-sm text-slate-300">
-                    Show on website
-                  </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="position" className="block text-sm font-medium text-slate-300">
+                      Position (optional)
+                    </label>
+                    <input
+                      type="text"
+                      id="position"
+                      name="position"
+                      value={formData.position}
+                      onChange={handleInputChange}
+                      className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      placeholder="E.g. CEO, Marketing Director"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="company" className="block text-sm font-medium text-slate-300">
+                      Company (optional)
+                    </label>
+                    <input
+                      type="text"
+                      id="company"
+                      name="company"
+                      value={formData.company}
+                      onChange={handleInputChange}
+                      className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      placeholder="Company name"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="order" className="block text-sm font-medium text-slate-300">
+                      Display Order
+                    </label>
+                    <input
+                      type="number"
+                      id="order"
+                      name="order"
+                      value={formData.order}
+                      onChange={handleInputChange}
+                      min="0"
+                      className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      placeholder="0"
+                    />
+                    <p className="mt-1 text-xs text-slate-400">Lower numbers appear first</p>
+                  </div>
+
+                  <div className="flex items-center h-full pt-6">
+                    <input
+                      type="checkbox"
+                      id="isActive"
+                      name="isActive"
+                      checked={formData.isActive}
+                      onChange={handleCheckboxChange}
+                      className="h-4 w-4 text-sky-500 bg-slate-700 border-slate-600 rounded focus:ring-sky-500"
+                    />
+                    <label htmlFor="isActive" className="ml-2 block text-sm text-slate-300">
+                      Show on website
+                    </label>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 bg-slate-700 text-white rounded-md hover:bg-slate-600 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveTestimonial}
-                className="px-4 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors"
-              >
-                {isNewTestimonial ? 'Add Testimonial' : 'Save Changes'}
-              </button>
-            </div>
-          </motion.div>
-        </div>
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 bg-slate-700 text-white rounded-md hover:bg-slate-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveTestimonial}
+                  className="px-4 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors"
+                >
+                  {isNewTestimonial ? 'Add Testimonial' : 'Save Changes'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </>
       )}
     </div>
   );
