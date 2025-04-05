@@ -36,8 +36,19 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Get users
+    // Read role from query parameters
+    const { searchParams } = new URL(request.url);
+    const roleFilter = searchParams.get('role')?.toUpperCase(); // Get role and uppercase it
+
+    // Build the where clause conditionally
+    let whereClause = {};
+    if (roleFilter === 'CUSTOMER' || roleFilter === 'ADMIN') { // Only filter if role is valid
+      whereClause = { role: roleFilter };
+    }
+
+    // Get users, applying the where clause
     const users = await prisma.user.findMany({
+      where: whereClause, // Apply the filter
       select: {
         id: true,
         name: true,
@@ -51,7 +62,7 @@ export async function GET(request: NextRequest) {
       }
     });
     
-    console.log(`Found ${users.length} users`);
+    console.log(`Found ${users.length} users${roleFilter ? ' with role ' + roleFilter : ''}`);
     
     // Format dates for JSON
     const formattedUsers = users.map(user => ({
