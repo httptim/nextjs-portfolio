@@ -1,113 +1,197 @@
 // app/components/sections/Hero.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import Link from 'next/link';
-import Particles from '@/app/components/Particles'; // Adjust import path if needed
-
-interface HeroConfig {
-  heroTitle?: string;
-  heroSubtitle?: string;
-  heroButtonText?: string;
-  heroButtonLink?: string;
-}
+import { useMousePosition } from '../../hooks/useMousePosition'; // Assuming this hook exists
+import Particles from '@/app/components/Particles';
 
 export default function Hero() {
-  const [config, setConfig] = useState<HeroConfig | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchConfig = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await fetch('/api/site-configuration');
-        if (!response.ok) throw new Error('Failed to fetch hero configuration');
-        const data = await response.json();
-        setConfig(data);
-      } catch (err) {
-        console.error(err);
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchConfig();
-  }, []);
-
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const mousePosition = useMousePosition();
+  
+  // Typing animation states
+  const [displayText, setDisplayText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [loopNum, setLoopNum] = useState(0);
+  const [typingSpeed, setTypingSpeed] = useState(150); // Start speed
+  
+  // List of phrases to cycle through
+  const phrases = [
+    "Full Stack Developer",
+    "UI/UX Designer",
+    "Mobile App Developer",
+    "Web Architect",
+    "Problem Solver"
+  ];
+  
+  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: { 
+    visible: {
       opacity: 1,
-      transition: { staggerChildren: 0.2, delayChildren: 0.3 }
+      transition: {
+        staggerChildren: 0.15,
+        delayChildren: 0.3,
+      },
+    },
+  };
+  
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.5, ease: "easeOut" },
     },
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
+  // Interactive heading behavior
+  const calculateMouseEffect = () => {
+    if (!headingRef.current || !mousePosition.x || !mousePosition.y) return {};
+    
+    const rect = headingRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    const distanceX = (mousePosition.x - centerX) / 20;
+    const distanceY = (mousePosition.y - centerY) / 20;
+    
+    return {
+      transform: `translate(${distanceX * -0.5}px, ${distanceY * -0.5}px)`,
+      textShadow: `${distanceX * 0.1}px ${distanceY * 0.1}px 8px rgba(0, 0, 0, 0.3)`,
+    };
   };
-  
-  const defaultTitle = "Default Hero Title";
-  const defaultSubtitle = "Default subtitle explaining your services.";
-  const defaultButtonText = "Get Started";
-  const defaultButtonLink = "#contact";
 
-  // Display loading or error state, or defaults if fetch fails
-  if (loading) {
-      return (
-          <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-slate-900">
-             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sky-500"></div>
-          </div>
-      );
-  }
+  // Typing animation effect
+  useEffect(() => {
+    const currentPhrase = phrases[loopNum % phrases.length];
+    let timer: NodeJS.Timeout;
 
-  // Use fetched data or defaults
-  const title = config?.heroTitle || defaultTitle;
-  const subtitle = config?.heroSubtitle || defaultSubtitle;
-  const buttonText = config?.heroButtonText || defaultButtonText;
-  const buttonLink = config?.heroButtonLink || defaultButtonLink;
+    const handleTyping = () => {
+        if (!isDeleting) {
+            // Typing forward
+            setDisplayText(currentPhrase.substring(0, displayText.length + 1));
+            setTypingSpeed(100 + Math.random() * 50);
+
+            if (displayText === currentPhrase) {
+                // Pause before deleting
+                timer = setTimeout(() => {
+                    setIsDeleting(true);
+                    setTypingSpeed(100);
+                }, 1500);
+            }
+        } else {
+            // Backspacing
+            setDisplayText(currentPhrase.substring(0, displayText.length - 1));
+             setTypingSpeed(80 + Math.random() * 40);
+
+            if (displayText === '') {
+                setIsDeleting(false);
+                setLoopNum(loopNum + 1);
+                setTypingSpeed(150);
+                // Pause before starting next phrase
+                timer = setTimeout(() => {}, 500); 
+            }
+        }
+    };
+
+    timer = setTimeout(handleTyping, typingSpeed);
+
+    return () => clearTimeout(timer);
+}, [displayText, isDeleting, loopNum, typingSpeed, phrases]); // Ensure all dependencies are listed
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-b from-slate-900 to-slate-800">
-      <div className="absolute inset-0 z-0 opacity-30">
+     // Using a simpler structure like before
+     <div className="flex items-center justify-center h-screen relative overflow-hidden bg-gradient-to-b from-slate-900 to-slate-800">
+       <div className="absolute inset-0 z-0 opacity-30">
         <Particles />
       </div>
       
       <motion.div 
-        className="relative z-10 text-center px-6"
+        className="container mx-auto px-6 z-10 text-center md:text-left"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
-        {error && <div className="text-red-400 mb-4">Error: {error}. Displaying default content.</div>}
-
+        <motion.div variants={itemVariants} className="mb-2 text-sky-400 tracking-widest font-light">
+          WELCOME TO MY PORTFOLIO
+        </motion.div>
+        
         <motion.h1 
-          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-tight"
+          ref={headingRef}
+          className="text-5xl md:text-7xl font-bold mb-6 tracking-tight text-white"
           variants={itemVariants}
+          style={calculateMouseEffect()}
         >
-          {title}
+          <span>I'm a </span>
+          <span className="text-sky-400">{displayText}</span>
+          {/* Blinking cursor effect */}
+          <span className="text-sky-400 opacity-100 animate-blink">|</span> 
         </motion.h1>
         
         <motion.p 
-          className="text-lg sm:text-xl md:text-2xl text-slate-300 max-w-3xl mx-auto mb-10"
+          className="text-lg md:text-xl text-slate-300 max-w-lg mb-8 mx-auto md:mx-0"
           variants={itemVariants}
         >
-          {subtitle}
+          Crafting elegant solutions to complex problems with clean code and intuitive design.
         </motion.p>
         
-        {buttonText && buttonLink && (
-          <motion.div variants={itemVariants}>
-            <Link href={buttonLink} legacyBehavior>
-              <a className="inline-block px-8 py-4 bg-sky-500 hover:bg-sky-600 text-white text-lg font-semibold rounded-lg shadow-lg transition-colors duration-300 transform hover:scale-105">
-                {buttonText}
-              </a>
-            </Link>
-          </motion.div>
-        )}
+        <motion.div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start" variants={itemVariants}>
+          <motion.button 
+            className="px-8 py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-md font-medium transition-colors"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => {
+              const projectsSection = document.getElementById('projects');
+              if (projectsSection) {
+                projectsSection.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
+          >
+            View My Work
+          </motion.button>
+          
+          <motion.button 
+            className="px-8 py-3 border border-slate-600 hover:border-sky-400 hover:text-sky-400 rounded-md font-medium transition-colors"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => {
+              const contactSection = document.getElementById('contact');
+              if (contactSection) {
+                contactSection.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
+          >
+            Contact Me
+          </motion.button>
+        </motion.div>
       </motion.div>
     </div>
   );
 }
+
+// Simple blink animation for the cursor
+const blinkAnimation = {
+    animate: {
+        opacity: [1, 1, 0, 0], // Blinking effect
+    },
+    transition: {
+        duration: 1,
+        repeat: Infinity,
+        repeatType: "loop",
+        ease: "linear",
+        times: [0, 0.5, 0.5, 1] 
+    }
+};
+
+// Add corresponding CSS if needed, e.g., in globals.css:
+/*
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  50.1%, 100% { opacity: 0; }
+}
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+*/
