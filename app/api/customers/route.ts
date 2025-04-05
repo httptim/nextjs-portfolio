@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client'; // Add this import
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,13 +33,13 @@ export async function GET(request: NextRequest) {
     // Calculate pagination
     const skip = (page - 1) * limit;
     
-    // Create the filter
-    const filter = {
+    // Create the filter with proper type for mode
+    const filter: Prisma.UserWhereInput = {
       role: 'CUSTOMER',
       OR: search ? [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { company: { contains: search, mode: 'insensitive' } }
+        { name: { contains: search, mode: Prisma.QueryMode.insensitive } },
+        { email: { contains: search, mode: Prisma.QueryMode.insensitive } },
+        { company: { contains: search, mode: Prisma.QueryMode.insensitive } }
       ] : undefined
     };
     
