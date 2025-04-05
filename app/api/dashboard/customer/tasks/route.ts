@@ -8,9 +8,18 @@ export async function GET(request: NextRequest) {
     // Verify that the user is authenticated
     const session = await getServerSession(authOptions);
     
+    console.log('Session in tasks API:', session?.user?.id, session?.user?.role);
+    
     if (!session) {
       return NextResponse.json(
-        { error: 'Not authenticated' },
+        { error: 'Not authenticated', details: 'No session found' },
+        { status: 401 }
+      );
+    }
+    
+    if (!session.user || !session.user.id) {
+      return NextResponse.json(
+        { error: 'User information missing', details: 'User ID is required' },
         { status: 401 }
       );
     }
@@ -39,6 +48,8 @@ export async function GET(request: NextRequest) {
       }
     });
     
+    console.log(`Found ${tasks.length} tasks for user ${session.user.id}`);
+    
     // Format dates to ISO strings for JSON response
     const formattedTasks = tasks.map(task => ({
       ...task,
@@ -51,7 +62,10 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error in customer dashboard tasks API route:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error' 
+      },
       { status: 500 }
     );
   }

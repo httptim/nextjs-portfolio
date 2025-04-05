@@ -8,11 +8,13 @@ const REDIRECT_COOKIE_NAME = 'next-auth-redirect-count';
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
+  console.log(`Middleware running for path: ${path}`);
   
   // Check for redirection loops
   const redirectCount = parseInt(request.cookies.get(REDIRECT_COOKIE_NAME)?.value || '0');
   if (redirectCount > MAX_REDIRECTS) {
     // Break the loop by clearing the cookie and allowing the request
+    console.log('Detected redirect loop, breaking cycle');
     const response = NextResponse.next();
     response.cookies.delete(REDIRECT_COOKIE_NAME);
     return response;
@@ -24,7 +26,10 @@ export async function middleware(request: NextRequest) {
                        path === '/' ||
                        path.startsWith('/api/auth') || 
                        path.includes('/auth/error') ||
+                       path.startsWith('/api/debug') ||
                        !path.includes('/dashboard');
+  
+  console.log(`Path ${path} is public: ${isPublicPath}`);
   
   // Get the session token
   const token = await getToken({ 
@@ -32,9 +37,12 @@ export async function middleware(request: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET 
   });
   
+  console.log(`Token for ${path}: ${token ? `Authenticated as ${token.role}` : 'Not authenticated'}`);
+  
   // If on a login page and already logged in, redirect to appropriate dashboard
   if ((path === '/auth/login' || path === '/auth/register') && token) {
     const redirectUrl = token.role === 'ADMIN' ? '/dashboard/admin' : '/dashboard/customer';
+    console.log(`Redirecting authenticated user to ${redirectUrl}`);
     return NextResponse.redirect(new URL(redirectUrl, request.url));
   }
   
@@ -45,31 +53,24 @@ export async function middleware(request: NextRequest) {
   
   // Check if the user is authenticated for protected routes
   if (!token) {
+    console.log(`No token for protected path ${path}, redirecting to login`);
     // Increment redirect count
     const response = NextResponse.redirect(new URL(`/auth/login?callbackUrl=${encodeURIComponent(request.url)}`, request.url));
     response.cookies.set(REDIRECT_COOKIE_NAME, (redirectCount + 1).toString());
     return response;
   }
   
-  // User is authenticated, clear redirect counter
-  const response = NextResponse.next();
-  response.cookies.delete(REDIRECT_COOKIE_NAME);
+  // User is authenticated, check if they're accessing the correct dashboard
+  const accessingAdminPath = path.includes('/dashboard/admin');
+  const isAdmin = token.role === 'ADMIN';
   
-  // Role-based access control for dashboard routes
-  const isAdminPath = path.includes('/dashboard/admin');
-  const isCustomerPath = path.includes('/dashboard/customer');
-  
-  if (isAdminPath && token.role !== 'ADMIN') {
-    // Redirect non-admin users trying to access admin routes
+  if (accessingAdminPath && !isAdmin) {
+    console.log('Customer attempting to access admin dashboard, redirecting');
     return NextResponse.redirect(new URL('/dashboard/customer', request.url));
   }
   
-  if (isCustomerPath && token.role !== 'CUSTOMER' && token.role !== 'ADMIN') {
-    // If somehow user has an invalid role, redirect to login
-    return NextResponse.redirect(new URL('/auth/login', request.url));
-  }
-
-  return response;
+  // Allow access to appropriate dashboard
+  return NextResponse.next();
 }
 
 // See "Matching Paths" below to learn more

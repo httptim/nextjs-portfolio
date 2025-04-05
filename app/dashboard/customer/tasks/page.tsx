@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useSession } from 'next-auth/react';
 
 interface Task {
   id: string;
@@ -17,32 +18,79 @@ interface Task {
 }
 
 export default function TasksPage() {
+  const { data: session, status } = useSession();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchTasks = async () => {
+      if (status !== 'authenticated') {
+        console.log('Not authenticated yet, waiting...');
+        return;
+      }
+
       try {
-        const response = await fetch('/api/dashboard/customer/tasks');
+        console.log('Fetching tasks...');
+        const response = await fetch('/api/dashboard/customer/tasks', {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        console.log('Response status:', response.status);
+        
         if (!response.ok) {
-          throw new Error('Failed to fetch tasks');
+          const errorData = await response.json().catch(() => null);
+          console.error('Error response:', errorData);
+          throw new Error(errorData?.error || `Failed to fetch tasks: ${response.status}`);
         }
+        
         const data = await response.json();
-        setTasks(data.tasks);
+        console.log('Tasks data:', data);
+        setTasks(data.tasks || []);
+        setError(null);
       } catch (error) {
         console.error('Error fetching tasks:', error);
+        setError(error instanceof Error ? error.message : 'Failed to fetch tasks');
+        setTasks([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTasks();
-  }, []);
+    if (status === 'authenticated') {
+      fetchTasks();
+    } else if (status === 'unauthenticated') {
+      setError('You must be logged in to view tasks');
+      setLoading(false);
+    }
+  }, [status]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sky-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+          <h1 className="text-2xl font-semibold text-white">Tasks</h1>
+          <div className="mt-4 bg-red-500/20 border border-red-500 text-red-400 rounded-lg p-4">
+            <p>{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

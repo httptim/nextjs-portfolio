@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react'; // Import signOut
+import SessionDebugger from '@/app/components/SessionDebugger';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -249,14 +250,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main content */}
       <div className="md:pl-64 flex flex-col flex-1">
-        <main className="flex-1">
-          <div className="py-6 md:py-0">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 pt-16 md:pt-0">
-              {children}
-            </div>
-          </div>
+        {/* Mobile header */}
+        <div className="md:hidden sticky top-0 h-16"></div>
+        
+        <main className="flex-1 pb-16 pt-8">
+          {children}
         </main>
       </div>
+      
+      {/* Add the SessionDebugger component */}
+      <SessionDebugger />
     </div>
   );
 }
