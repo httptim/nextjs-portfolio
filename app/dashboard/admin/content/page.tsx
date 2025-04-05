@@ -102,8 +102,16 @@ export default function ContentManagement() {
       id: '',
       title: '',
       description: '',
-      category: selectedCategory === 'all' ? 'fullstack' : selectedCategory,
+      category: selectedCategory === 'all' ? 'MY_PROJECTS' : selectedCategory,
       technologies: [],
+      features: [],
+      tags: [],
+      demoLink: '',
+      githubLink: '',
+      image: '',
+      timeline: '',
+      status: '',
+      order: 0,
     });
     setIsNewProject(true);
     setIsModalOpen(true);
