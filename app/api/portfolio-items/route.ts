@@ -13,9 +13,9 @@ interface NewPortfolioItemData {
   category: string; // Client sends string, we validate and convert to enum
   technologies?: string[] | string; // Client might send string or array initially? handle both.
   features?: string[] | string;
-  demoLink?: string;
-  githubLink?: string;
-  image?: string;
+  demoUrl?: string;
+  githubUrl?: string;
+  imageUrl?: string;
   timeline?: string;
   status?: string;
   tags?: string[] | string;
@@ -104,13 +104,13 @@ export async function POST(request: NextRequest) {
         category: categoryEnumValue, 
         technologies: technologies,
         features: features,
-        demoUrl: body.demoLink || null, // Map client name to schema name, default null
-        githubUrl: body.githubLink || null, // Map client name to schema name, default null
-        imageUrl: body.image || null, // Map client name to schema name, default null
+        demoUrl: body.demoUrl || null,
+        githubUrl: body.githubUrl || null,
+        imageUrl: body.imageUrl || null,
         timeline: body.timeline || null,
         status: body.status || null,
         tags: tags,
-        order: isNaN(order) ? 0 : order, // Use validated/parsed order, default 0 if NaN
+        order: isNaN(order) ? 0 : order,
       },
     });
 
