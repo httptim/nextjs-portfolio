@@ -49,17 +49,25 @@ export default function AdminBillingPage() {
       setLoading(true);
       try {
         // Fetch invoices
-        const invoicesResponse = await fetch('/api/invoices');
+        const invoicesResponse = await fetch('/api/invoices', { credentials: 'include' });
         
         if (!invoicesResponse.ok) {
-          throw new Error('Failed to fetch invoices');
+          console.error(`Failed to fetch invoices: ${invoicesResponse.status} ${invoicesResponse.statusText}`);
+          let errorDetails = 'Failed to fetch invoices';
+          try {
+            const errorData = await invoicesResponse.json();
+            errorDetails = errorData.error || errorData.message || errorDetails;
+          } catch (parseError) {
+            // Ignore if response is not JSON or empty
+          }
+          throw new Error(errorDetails);
         }
         
         const invoicesData = await invoicesResponse.json();
         setInvoices(invoicesData.invoices);
         
         // Fetch billing stats
-        const statsResponse = await fetch('/api/invoices/stats');
+        const statsResponse = await fetch('/api/invoices/stats', { credentials: 'include' });
         
         if (statsResponse.ok) {
           const statsData = await statsResponse.json();

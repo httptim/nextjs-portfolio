@@ -50,10 +50,16 @@ export default function AdminMessagesPage() {
     const fetchConversations = async () => {
       setLoading(true);
       try {
-        const response = await fetch('/api/conversations');
+        const response = await fetch('/api/conversations', { credentials: 'include' });
         
         if (!response.ok) {
-          throw new Error('Failed to fetch conversations');
+          console.error(`Failed to fetch conversations: ${response.status} ${response.statusText}`);
+          let errorDetails = 'Failed to fetch conversations';
+          try {
+            const errorData = await response.json();
+            errorDetails = errorData.error || errorData.message || errorDetails;
+          } catch (parseError) {}
+          throw new Error(errorDetails);
         }
         
         const data = await response.json();
@@ -88,6 +94,7 @@ export default function AdminMessagesPage() {
         try {
           await fetch(`/api/conversations/${selectedConversation}/read`, {
             method: 'POST',
+            credentials: 'include'
           });
           
           // Update local state
@@ -167,6 +174,7 @@ export default function AdminMessagesPage() {
         body: JSON.stringify({
           content: newMessage,
         }),
+        credentials: 'include'
       });
       
       if (!response.ok) {

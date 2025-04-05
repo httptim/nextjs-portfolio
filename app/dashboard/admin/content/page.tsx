@@ -45,17 +45,23 @@ export default function ContentManagement() {
       setLoading(true);
       try {
         // Fetch portfolio projects
-        const projectsResponse = await fetch('/api/portfolio-projects');
+        const projectsResponse = await fetch('/api/portfolio-projects', { credentials: 'include' });
         
         if (!projectsResponse.ok) {
-          throw new Error('Failed to fetch projects');
+          console.error(`Failed to fetch projects: ${projectsResponse.status} ${projectsResponse.statusText}`);
+          let errorDetails = 'Failed to fetch projects';
+          try {
+            const errorData = await projectsResponse.json();
+            errorDetails = errorData.error || errorData.message || errorDetails;
+          } catch (parseError) {}
+          throw new Error(errorDetails);
         }
         
         const projectsData = await projectsResponse.json();
         setProjects(projectsData.projects);
         
         // Fetch contact submissions
-        const submissionsResponse = await fetch('/api/contact-submissions');
+        const submissionsResponse = await fetch('/api/contact-submissions', { credentials: 'include' });
         
         if (submissionsResponse.ok) {
           const submissionsData = await submissionsResponse.json();
@@ -109,6 +115,7 @@ export default function ContentManagement() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(editingProject),
+          credentials: 'include'
         });
       } else {
         // Update existing project
@@ -118,6 +125,7 @@ export default function ContentManagement() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(editingProject),
+          credentials: 'include'
         });
       }
       
@@ -149,6 +157,7 @@ export default function ContentManagement() {
     try {
       const response = await fetch(`/api/portfolio-projects/${id}`, {
         method: 'DELETE',
+        credentials: 'include'
       });
       
       if (!response.ok) {
@@ -179,6 +188,7 @@ export default function ContentManagement() {
     try {
       const response = await fetch(`/api/contact-submissions/${id}`, {
         method: 'DELETE',
+        credentials: 'include'
       });
       
       if (!response.ok) {
