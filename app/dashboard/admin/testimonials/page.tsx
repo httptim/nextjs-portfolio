@@ -10,8 +10,9 @@ interface Testimonial {
   rating: number;
   clientId: string;
   clientName: string;
-  position?: string;
-  company?: string;
+  clientEmail?: string;
+  position?: string | null;
+  company?: string | null;
   isActive: boolean;
   order: number;
   createdAt: string;
@@ -21,13 +22,14 @@ interface Customer {
   id: string;
   name: string;
   email: string;
-  company?: string;
+  company?: string | null;
 }
 
 export default function TestimonialsManagementPage() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTestimonial, setSelectedTestimonial] = useState<Testimonial | null>(null);
   const [isNewTestimonial, setIsNewTestimonial] = useState(false);
@@ -44,6 +46,12 @@ export default function TestimonialsManagementPage() {
     order: 0,
   });
   
+  // Form errors
+  const [formErrors, setFormErrors] = useState<{
+    content?: string;
+    clientId?: string;
+  }>({});
+
   // Fetch testimonials and customers on page load
   useEffect(() => {
     const fetchData = async () => {
@@ -51,22 +59,26 @@ export default function TestimonialsManagementPage() {
       try {
         // Fetch testimonials (admin version with all fields)
         const testimonialsResponse = await fetch('/api/testimonials/admin');
+        
         if (!testimonialsResponse.ok) {
           throw new Error('Failed to fetch testimonials');
         }
+        
         const testimonialsData = await testimonialsResponse.json();
         setTestimonials(testimonialsData.testimonials);
         
         // Fetch customers for the dropdown
         const customersResponse = await fetch('/api/users?role=CUSTOMER');
+        
         if (!customersResponse.ok) {
           throw new Error('Failed to fetch customers');
         }
+        
         const customersData = await customersResponse.json();
         setCustomers(customersData.users);
       } catch (error) {
         console.error('Error fetching data:', error);
-        alert('Failed to load data. Please try again.');
+        setError('Failed to load data. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -79,7 +91,8 @@ export default function TestimonialsManagementPage() {
   const filteredTestimonials = testimonials.filter(testimonial => 
     testimonial.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     testimonial.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (testimonial.company && testimonial.company.toLowerCase().includes(searchTerm.toLowerCase()))
+    (testimonial.company && testimonial.company.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (testimonial.position && testimonial.position.toLowerCase().includes(searchTerm.toLowerCase()))
   );
   
   // Handle form input changes
@@ -96,8 +109,13 @@ export default function TestimonialsManagementPage() {
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
+    
+    // Clear error when field is edited
+    if (formErrors[name as keyof typeof formErrors]) {
+      setFormErrors(prev => ({ ...prev, [name]: undefined }));
+    }
   };
-  
+
   // Handle checkbox changes
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;
@@ -135,16 +153,29 @@ export default function TestimonialsManagementPage() {
     setIsModalOpen(true);
   };
   
+  // Validate the form before submission
+  const validateForm = () => {
+    const errors: {
+      content?: string;
+      clientId?: string;
+    } = {};
+    
+    if (!formData.content.trim()) {
+      errors.content = 'Testimonial content is required';
+    }
+    
+    if (!formData.clientId) {
+      errors.clientId = 'Please select a client';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+  
   // Save a testimonial (create or update)
   const handleSaveTestimonial = async () => {
     try {
-      if (!formData.content.trim()) {
-        alert('Please enter testimonial content');
-        return;
-      }
-      
-      if (!formData.clientId) {
-        alert('Please select a client');
+      if (!validateForm()) {
         return;
       }
       
@@ -171,7 +202,8 @@ export default function TestimonialsManagementPage() {
       }
       
       if (!response || !response.ok) {
-        throw new Error('Failed to save testimonial');
+        const errorData = await response?.json();
+        throw new Error(errorData?.error || 'Failed to save testimonial');
       }
       
       // Refresh the testimonials list
@@ -251,6 +283,24 @@ export default function TestimonialsManagementPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sky-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+          <div className="bg-red-500/20 text-red-500 p-4 rounded-md">
+            {error}
+            <button 
+              className="ml-2 underline"
+              onClick={() => window.location.reload()}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -429,7 +479,9 @@ export default function TestimonialsManagementPage() {
                   name="clientId"
                   value={formData.clientId}
                   onChange={handleInputChange}
-                  className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className={`mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 ${
+                    formErrors.clientId ? 'border border-red-500 focus:ring-red-500' : 'focus:ring-sky-500'
+                  }`}
                 >
                   <option value="" disabled>Select a client</option>
                   {customers.map(customer => (
@@ -438,6 +490,9 @@ export default function TestimonialsManagementPage() {
                     </option>
                   ))}
                 </select>
+                {formErrors.clientId && (
+                  <p className="mt-1 text-sm text-red-500">{formErrors.clientId}</p>
+                )}
               </div>
 
               <div>
@@ -450,9 +505,14 @@ export default function TestimonialsManagementPage() {
                   value={formData.content}
                   onChange={handleInputChange}
                   rows={4}
-                  className="mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className={`mt-1 w-full px-4 py-2 bg-slate-700 text-white rounded-md focus:outline-none focus:ring-2 ${
+                    formErrors.content ? 'border border-red-500 focus:ring-red-500' : 'focus:ring-sky-500'
+                  }`}
                   placeholder="Enter testimonial text"
                 ></textarea>
+                {formErrors.content && (
+                  <p className="mt-1 text-sm text-red-500">{formErrors.content}</p>
+                )}
               </div>
 
               <div>
