@@ -60,8 +60,8 @@ export default function ContentManagement() {
         }
 
         const projectsData = await projectsResponse.json();
-        // Ensure the response key matches what the API sends ('portfolioItems')
-        setProjects(projectsData.portfolioItems || []); 
+        // Use the correct key 'projects' from the API response
+        setProjects(projectsData.projects || []); 
 
         // Fetch contact submissions (corrected endpoint)
         const submissionsResponse = await fetch('/api/contact-submissions', { credentials: 'include' });
