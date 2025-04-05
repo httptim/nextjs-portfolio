@@ -43,29 +43,36 @@ export default function ContentManagement() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setError(null); // Reset error on fetch
       try {
-        // Fetch portfolio projects
-        const projectsResponse = await fetch('/api/portfolio-projects', { credentials: 'include' });
-        
+        // Fetch portfolio items (corrected endpoint)
+        const projectsResponse = await fetch('/api/portfolio-items', { credentials: 'include' });
+
         if (!projectsResponse.ok) {
-          console.error(`Failed to fetch projects: ${projectsResponse.status} ${projectsResponse.statusText}`);
-          let errorDetails = 'Failed to fetch projects';
+          console.error(`Failed to fetch portfolio items: ${projectsResponse.status} ${projectsResponse.statusText}`);
+          let errorDetails = 'Failed to fetch portfolio items';
           try {
             const errorData = await projectsResponse.json();
             errorDetails = errorData.error || errorData.message || errorDetails;
           } catch (parseError) {}
           throw new Error(errorDetails);
         }
-        
+
         const projectsData = await projectsResponse.json();
-        setProjects(projectsData.projects);
-        
-        // Fetch contact submissions
+        // Ensure the response key matches what the API sends ('portfolioItems')
+        setProjects(projectsData.portfolioItems || []); 
+
+        // Fetch contact submissions (corrected endpoint)
         const submissionsResponse = await fetch('/api/contact-submissions', { credentials: 'include' });
-        
-        if (submissionsResponse.ok) {
+
+        if (!submissionsResponse.ok) {
+           console.error(`Failed to fetch contact submissions: ${submissionsResponse.status} ${submissionsResponse.statusText}`);
+           // Decide if failing to load submissions should block the whole page
+           // setError('Failed to fetch contact submissions'); 
+        } else {
           const submissionsData = await submissionsResponse.json();
-          setContactSubmissions(submissionsData.submissions);
+          // Ensure the response key matches what the API sends ('submissions')
+          setContactSubmissions(submissionsData.submissions || []); 
         }
       } catch (err) {
         console.error('Error fetching content data:', err);
@@ -104,43 +111,49 @@ export default function ContentManagement() {
   const handleSaveProject = async () => {
     if (!editingProject) return;
 
+    // Basic validation on client side can be helpful
+    if (!editingProject.title || !editingProject.category || !editingProject.description) {
+      alert('Title, Category, and Description are required.');
+      return;
+    }
+
     try {
       let response;
-      
-      if (isNewProject) {
-        // Create new project
-        response = await fetch('/api/portfolio-projects', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(editingProject),
-          credentials: 'include'
-        });
-      } else {
-        // Update existing project
-        response = await fetch(`/api/portfolio-projects/${editingProject.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(editingProject),
-          credentials: 'include'
-        });
-      }
-      
+      const apiUrl = isNewProject ? '/api/portfolio-items' : `/api/portfolio-items/${editingProject.id}`;
+      const method = isNewProject ? 'POST' : 'PUT';
+
+      response = await fetch(apiUrl, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Send the correct field names (demoUrl, githubUrl, imageUrl)
+        body: JSON.stringify({
+          ...editingProject,
+          demoLink: undefined, // Don't send demoLink
+          githubLink: undefined, // Don't send githubLink
+          image: undefined, // Don't send image
+          demoUrl: editingProject.demoLink, // Map correctly
+          githubUrl: editingProject.githubLink, // Map correctly
+          imageUrl: editingProject.image // Map correctly
+        }),
+        credentials: 'include'
+      });
+
       if (!response.ok) {
-        throw new Error('Failed to save project');
+         const errorData = await response.json().catch(() => ({})); // Try to get error details
+        throw new Error(errorData.details || errorData.error || `Failed to ${isNewProject ? 'create' : 'update'} portfolio item`);
       }
-      
+
       const data = await response.json();
-      
+
+      // Update state using the correct key ('project') from API response
       if (isNewProject) {
         setProjects([...projects, data.project]);
       } else {
         setProjects(projects.map(p => (p.id === data.project.id ? data.project : p)));
       }
-      
+
       setIsModalOpen(false);
       setEditingProject(null);
     } catch (err) {
@@ -150,18 +163,19 @@ export default function ContentManagement() {
   };
 
   const handleDeleteProject = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this project?')) {
+    if (!confirm('Are you sure you want to delete this portfolio item?')) {
       return;
     }
     
     try {
-      const response = await fetch(`/api/portfolio-projects/${id}`, {
+      const response = await fetch(`/api/portfolio-items/${id}`, {
         method: 'DELETE',
         credentials: 'include'
       });
       
       if (!response.ok) {
-        throw new Error('Failed to delete project');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.details || errorData.error || 'Failed to delete portfolio item');
       }
       
       setProjects(projects.filter(project => project.id !== id));
@@ -192,7 +206,8 @@ export default function ContentManagement() {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to delete submission');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.details || errorData.error || 'Failed to delete submission');
       }
       
       setContactSubmissions(contactSubmissions.filter(submission => submission.id !== id));
