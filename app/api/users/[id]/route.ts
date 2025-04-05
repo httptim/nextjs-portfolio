@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     // Verify that the user is authenticated and is an admin
@@ -20,7 +20,7 @@ export async function GET(
       );
     }
     
-    if (session.user.role !== 'ADMIN' && session.user.id !== params.id) {
+    if (session.user.role !== 'ADMIN' && session.user.id !== context.params.id) {
       return NextResponse.json(
         { error: 'Not authorized' },
         { status: 403 }
@@ -29,7 +29,7 @@ export async function GET(
     
     // Get the user
     const user = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id: context.params.id },
       select: {
         id: true,
         name: true,
@@ -60,7 +60,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     // Verify that the user is authenticated
@@ -75,7 +75,7 @@ export async function PUT(
     
     // Only admins can change roles or update other users
     const isAdmin = session.user.role === 'ADMIN';
-    const isSelfUpdate = session.user.id === params.id;
+    const isSelfUpdate = session.user.id === context.params.id;
     
     if (!isAdmin && !isSelfUpdate) {
       return NextResponse.json(
@@ -86,7 +86,7 @@ export async function PUT(
     
     // Get the user to update
     const existingUser = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id: context.params.id },
     });
     
     if (!existingUser) {
@@ -119,7 +119,7 @@ export async function PUT(
     
     // Update the user
     const user = await prisma.user.update({
-      where: { id: params.id },
+      where: { id: context.params.id },
       data: updateData,
       select: {
         id: true,
@@ -144,7 +144,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     // Verify that the user is authenticated and is an admin
@@ -165,9 +165,9 @@ export async function DELETE(
     }
     
     // Check if trying to delete the last admin
-    if (params.id !== session.user.id) {
+    if (context.params.id !== session.user.id) {
       const user = await prisma.user.findUnique({
-        where: { id: params.id },
+        where: { id: context.params.id },
       });
       
       if (user?.role === 'ADMIN') {
@@ -193,7 +193,7 @@ export async function DELETE(
     
     // Delete the user
     await prisma.user.delete({
-      where: { id: params.id },
+      where: { id: context.params.id },
     });
     
     return NextResponse.json({ success: true });
