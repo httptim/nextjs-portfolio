@@ -140,9 +140,9 @@ export async function POST(request: NextRequest) {
 }
 
 // PUT handler to update an existing portfolio item
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, context: any) {
   try {
-    const id = params.id; // Get ID from dynamic route parameter
+    const id = context.params.id;
     console.log(`Portfolio Items API PUT called for ID: ${id}`);
     const session = await getServerSession(authOptions);
 
@@ -221,9 +221,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 }
 
 // DELETE handler to remove a portfolio item
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, context: any) {
   try {
-    const id = params.id; // Get ID from dynamic route parameter
+    const id = context.params.id;
     console.log(`Portfolio Items API DELETE called for ID: ${id}`);
     const session = await getServerSession(authOptions);
 
