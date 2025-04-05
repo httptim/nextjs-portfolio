@@ -6,10 +6,10 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = context.params.id;
+    const { id } = await params;
     
     // Get the testimonial
     const testimonial = await prisma.testimonial.findUnique({
@@ -70,7 +70,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Verify that the user is authenticated and is an admin
@@ -90,7 +90,7 @@ export async function PUT(
       );
     }
     
-    const id = context.params.id;
+    const { id } = await params;
     
     // Check if the testimonial exists
     const existingTestimonial = await prisma.testimonial.findUnique({
@@ -165,7 +165,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Verify that the user is authenticated and is an admin
@@ -185,7 +185,7 @@ export async function DELETE(
       );
     }
     
-    const id = context.params.id;
+    const { id } = await params;
     
     // Check if the testimonial exists
     const existingTestimonial = await prisma.testimonial.findUnique({
