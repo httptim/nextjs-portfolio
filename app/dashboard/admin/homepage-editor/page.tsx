@@ -5,16 +5,6 @@ import { motion } from 'framer-motion';
 
 // --- Interfaces --- //
 
-interface SiteConfiguration {
-  heroTitle?: string;
-  heroSubtitle?: string;
-  heroButtonText?: string;
-  heroButtonLink?: string;
-  aboutHeading?: string;
-  aboutText?: string;
-  aboutImageUrl?: string;
-}
-
 interface User {
   id: string;
   name: string;
@@ -60,18 +50,14 @@ const initialTestimonialForm: TestimonialFormData = {
 // --- Component --- //
 
 export default function HomepageEditorPage() {
-  const [config, setConfig] = useState<SiteConfiguration | null>(null);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [customers, setCustomers] = useState<User[]>([]);
   
-  const [configLoading, setConfigLoading] = useState(true);
   const [testimonialsLoading, setTestimonialsLoading] = useState(true);
   const [customersLoading, setCustomersLoading] = useState(true);
-  const [configError, setConfigError] = useState<string | null>(null);
   const [testimonialsError, setTestimonialsError] = useState<string | null>(null);
   const [customersError, setCustomersError] = useState<string | null>(null);
   
-  const [configSaving, setConfigSaving] = useState(false);
   const [testimonialSaving, setTestimonialSaving] = useState(false);
   const [testimonialDeleting, setTestimonialDeleting] = useState<string | null>(null); // Store ID being deleted
 
@@ -81,37 +67,18 @@ export default function HomepageEditorPage() {
 
   // --- Data Fetching --- //
 
-  const fetchConfig = useCallback(async () => {
-    setConfigLoading(true);
-    setConfigError(null);
-    try {
-      const response = await fetch('/api/site-configuration');
-      if (!response.ok) throw new Error('Failed to fetch site configuration');
-      const data = await response.json();
-      setConfig(data);
-    } catch (err) {
-      console.error(err);
-      setConfigError(err instanceof Error ? err.message : 'An unknown error occurred');
-    } finally {
-      setConfigLoading(false);
-    }
-  }, []);
-
   const fetchTestimonials = useCallback(async () => {
     setTestimonialsLoading(true);
     setTestimonialsError(null);
     try {
-      // Fetch ALL testimonials for admin, not just active ones
-      // We need to adjust the API or make a separate admin endpoint if needed
-      // For now, assume GET /api/testimonials returns all, or create an admin variant.
-      // Let's modify the fetch call slightly assuming the existing GET is okay for now
-      // and we filter/sort client-side, OR the admin needs its own fetch.
-      // TODO: Revisit if GET /api/testimonials needs an admin=true param or similar.
-      const response = await fetch('/api/testimonials'); // Might need adjustment for admin view
+      // Fetch ALL testimonials for admin? Let's assume GET /api/testimonials 
+      // needs adjustment or we need a different endpoint for admin.
+      // For now, fetching potentially only active ones:
+      const response = await fetch('/api/testimonials'); 
       if (!response.ok) throw new Error('Failed to fetch testimonials');
       const data = await response.json();
       // Sort testimonials by order number
-      setTestimonials(data.testimonials.sort((a: Testimonial, b: Testimonial) => a.order - b.order));
+      setTestimonials((data.testimonials || []).sort((a: Testimonial, b: Testimonial) => a.order - b.order));
     } catch (err) {
       console.error(err);
       setTestimonialsError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -137,41 +104,11 @@ export default function HomepageEditorPage() {
   }, []);
 
   useEffect(() => {
-    fetchConfig();
     fetchTestimonials();
     fetchCustomers();
-  }, [fetchConfig, fetchTestimonials, fetchCustomers]);
+  }, [fetchTestimonials, fetchCustomers]); // Updated dependencies
 
   // --- Event Handlers --- //
-
-  const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setConfig(prev => (prev ? { ...prev, [name]: value } : null));
-  };
-
-  const handleSaveConfig = async () => {
-    if (!config) return;
-    setConfigSaving(true);
-    setConfigError(null);
-    try {
-      const response = await fetch('/api/site-configuration', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer YOUR_ADMIN_TOKEN' }, // Adjust auth as needed
-        body: JSON.stringify(config),
-      });
-      if (!response.ok) {
-         const errorData = await response.json().catch(() => ({}));
-         throw new Error(errorData.details || errorData.error || 'Failed to save configuration');
-      }
-      // Optionally show success message
-      console.log('Site configuration saved successfully');
-    } catch (err) {
-      console.error(err);
-      setConfigError(err instanceof Error ? err.message : 'An unknown error occurred');
-    } finally {
-      setConfigSaving(false);
-    }
-  };
 
   const handleTestimonialFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -237,7 +174,8 @@ export default function HomepageEditorPage() {
     try {
       const response = await fetch(url, {
         method: method,
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer YOUR_ADMIN_TOKEN' }, // Adjust auth
+        // Ensure proper auth header (e.g., using session or including credentials)
+        headers: { 'Content-Type': 'application/json', 'credentials': 'include' }, 
         body: JSON.stringify(payload),
       });
 
@@ -266,7 +204,8 @@ export default function HomepageEditorPage() {
     try {
         const response = await fetch(`/api/testimonials/${id}`, {
             method: 'DELETE',
-            headers: { 'Authorization': 'Bearer YOUR_ADMIN_TOKEN' }, // Adjust auth
+            // Ensure proper auth header/credentials
+            headers: { 'credentials': 'include' }, 
         });
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -296,123 +235,8 @@ export default function HomepageEditorPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 text-white">
-      <h1 className="text-3xl font-bold mb-8">Homepage Content Editor</h1>
-
-      {/* --- Site Configuration Section --- */}
-      <section className="mb-12 bg-slate-800 p-6 rounded-lg shadow-lg">
-        <h2 className="text-2xl font-semibold mb-6">Site Configuration (Hero & About)</h2>
-        {configLoading && renderLoading('configuration')}
-        {renderError(configError, 'configuration')}
-        {config && !configLoading && !configError && (
-          <motion.form 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            onSubmit={(e) => { e.preventDefault(); handleSaveConfig(); }}
-            className="space-y-6"
-          >
-            {/* Hero Fields */}
-            <fieldset className="border border-slate-600 p-4 rounded-md">
-              <legend className="text-lg font-medium px-2">Hero Section</legend>
-              <div>
-                <label htmlFor="heroTitle" className="block text-sm font-medium text-slate-300 mb-1">Title</label>
-                <input 
-                  type="text" 
-                  id="heroTitle" 
-                  name="heroTitle"
-                  value={config.heroTitle || ''}
-                  onChange={handleConfigChange}
-                  className="w-full px-3 py-2 bg-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="heroSubtitle" className="block text-sm font-medium text-slate-300 mb-1">Subtitle</label>
-                <textarea 
-                  id="heroSubtitle" 
-                  name="heroSubtitle"
-                  rows={3}
-                  value={config.heroSubtitle || ''}
-                  onChange={handleConfigChange}
-                  className="w-full px-3 py-2 bg-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="heroButtonText" className="block text-sm font-medium text-slate-300 mb-1">Button Text</label>
-                <input 
-                  type="text" 
-                  id="heroButtonText" 
-                  name="heroButtonText"
-                  value={config.heroButtonText || ''}
-                  onChange={handleConfigChange}
-                  className="w-full px-3 py-2 bg-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="heroButtonLink" className="block text-sm font-medium text-slate-300 mb-1">Button Link (URL or #id)</label>
-                <input 
-                  type="text" 
-                  id="heroButtonLink" 
-                  name="heroButtonLink"
-                  value={config.heroButtonLink || ''}
-                  onChange={handleConfigChange}
-                  className="w-full px-3 py-2 bg-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-              </div>
-            </fieldset>
-
-            {/* About Fields */}
-            <fieldset className="border border-slate-600 p-4 rounded-md">
-              <legend className="text-lg font-medium px-2">About Section</legend>
-              <div>
-                <label htmlFor="aboutHeading" className="block text-sm font-medium text-slate-300 mb-1">Heading</label>
-                <input 
-                  type="text" 
-                  id="aboutHeading" 
-                  name="aboutHeading"
-                  value={config.aboutHeading || ''}
-                  onChange={handleConfigChange}
-                  className="w-full px-3 py-2 bg-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="aboutText" className="block text-sm font-medium text-slate-300 mb-1">Text Content</label>
-                <textarea 
-                  id="aboutText" 
-                  name="aboutText"
-                  rows={5}
-                  value={config.aboutText || ''}
-                  onChange={handleConfigChange}
-                  className="w-full px-3 py-2 bg-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="aboutImageUrl" className="block text-sm font-medium text-slate-300 mb-1">Image URL (Optional)</label>
-                <input 
-                  type="text" 
-                  id="aboutImageUrl" 
-                  name="aboutImageUrl"
-                  value={config.aboutImageUrl || ''}
-                  onChange={handleConfigChange}
-                  className="w-full px-3 py-2 bg-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  placeholder="e.g., /images/about.jpg"
-                />
-                {/* TODO: Add file upload capability here? */} 
-              </div>
-            </fieldset>
-            
-            <div className="flex justify-end">
-              <motion.button
-                type="submit"
-                disabled={configSaving}
-                className={`px-6 py-2 rounded-md font-medium transition-colors ${configSaving ? 'bg-slate-500 cursor-not-allowed' : 'bg-sky-500 hover:bg-sky-600'}`}
-                whileHover={{ scale: configSaving ? 1 : 1.03 }}
-                whileTap={{ scale: configSaving ? 1 : 0.98 }}
-              >
-                {configSaving ? 'Saving...' : 'Save Configuration'}
-              </motion.button>
-            </div>
-          </motion.form>
-        )}
-      </section>
+      <h1 className="text-3xl font-bold mb-8">Homepage Content (Testimonials)</h1>
+      <p className="text-slate-400 mb-8 -mt-6">Manage testimonials displayed on the public homepage. Manage projects via the Content page.</p>
 
       {/* --- Testimonials Section --- */} 
       <section id="testimonial-management" className="mb-12 bg-slate-800 p-6 rounded-lg shadow-lg">
@@ -572,7 +396,7 @@ export default function HomepageEditorPage() {
 
         {/* Testimonials List */} 
         {!testimonialsLoading && !testimonialsError && testimonials.length === 0 && (
-            <div className="text-center py-6 text-slate-400">No testimonials found.</div>
+            <div className="text-center py-6 text-slate-400">No testimonials found. Add one using the button above.</div>
         )}
         {!testimonialsLoading && !testimonialsError && testimonials.length > 0 && (
           <div className="overflow-x-auto">
@@ -629,8 +453,6 @@ export default function HomepageEditorPage() {
           </div>
         )}
       </section>
-
-      {/* TODO: Add section for managing PortfolioProject items if not covered elsewhere */} 
 
     </div>
   );

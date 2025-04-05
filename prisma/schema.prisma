@@ -236,18 +236,3 @@ model Testimonial {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-
-// Model to store site-wide configuration, intended to hold a single record.
-// Use a fixed ID (e.g., "main") or fetch using findFirst() without args.
-model SiteConfiguration {
-  id              String   @id @default("main") // Fixed ID for singleton
-  heroTitle       String?
-  heroSubtitle    String?
-  heroButtonText  String?
-  heroButtonLink  String?
-  aboutHeading    String?
-  aboutText       String?
-  aboutImageUrl   String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}

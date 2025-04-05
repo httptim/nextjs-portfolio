@@ -6,69 +6,34 @@ import Image from 'next/image';
 import { motion, useAnimation } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 
-interface Project {
+// Interface matching PortfolioProject model from schema.prisma
+interface PortfolioProject {
   id: string;
   title: string;
   description: string;
-  image: string;
+  category: string; // e.g., FULLSTACK, FRONTEND, etc.
   technologies: string[];
+  imageUrl?: string | null;
+  demoUrl?: string | null;
+  githubUrl?: string | null;
   features: string[];
-  demoLink: string;
-  githubLink: string;
-  category: 'frontend' | 'backend' | 'fullstack' | 'mobile';
+  status?: string | null;
+  timeline?: string | null;
+  tags: string[];
+  order: number;
+  createdAt: string; // Dates are typically strings after JSON serialization
+  updatedAt: string;
 }
 
-// Sample project data
-const projectsData: Project[] = [
-  {
-    id: 'project1',
-    title: 'E-Commerce Platform',
-    description: 'A full-featured e-commerce platform with product management, cart functionality, and secure payment processing.',
-    image: '/images/project1.jpg',
-    technologies: ['React', 'Node.js', 'Express', 'MongoDB', 'Stripe'],
-    features: ['User authentication', 'Product search and filtering', 'Shopping cart', 'Payment integration', 'Order management'],
-    demoLink: 'https://example.com/demo',
-    githubLink: 'https://github.com/username/project',
-    category: 'fullstack',
-  },
-  {
-    id: 'project2',
-    title: 'Real-time Chat Application',
-    description: 'A real-time messaging platform with private and group chat capabilities, online status, and notification system.',
-    image: '/images/project2.jpg',
-    technologies: ['React', 'Socket.io', 'Express', 'MongoDB', 'JWT'],
-    features: ['Real-time messaging', 'User authentication', 'Online status indicators', 'Read receipts', 'File sharing'],
-    demoLink: 'https://example.com/demo',
-    githubLink: 'https://github.com/username/project',
-    category: 'fullstack',
-  },
-  {
-    id: 'project3',
-    title: 'Task Management Dashboard',
-    description: 'A comprehensive project management tool with task tracking, team collaboration, and performance analytics.',
-    image: '/images/project3.jpg',
-    technologies: ['React', 'Redux', 'TypeScript', 'Material UI', 'Chart.js'],
-    features: ['Drag-and-drop interface', 'Task assignments', 'Progress tracking', 'Performance metrics', 'Calendar integration'],
-    demoLink: 'https://example.com/demo',
-    githubLink: 'https://github.com/username/project',
-    category: 'frontend',
-  },
-  {
-    id: 'project4',
-    title: 'Weather Forecast App',
-    description: 'A responsive mobile weather application with 7-day forecasts, location-based weather, and interactive maps.',
-    image: '/images/project4.jpg',
-    technologies: ['React Native', 'Redux', 'Weather API', 'Geolocation', 'Maps SDK'],
-    features: ['Real-time weather updates', 'Location tracking', 'Interactive weather maps', 'Hourly forecasts', 'Weather alerts'],
-    demoLink: 'https://example.com/demo',
-    githubLink: 'https://github.com/username/project',
-    category: 'mobile',
-  },
-];
+// Categories relevant to this component
+const RELEVANT_CATEGORIES = ['FULLSTACK', 'FRONTEND', 'BACKEND', 'MOBILE'];
 
 export default function Projects() {
+  const [allProjects, setAllProjects] = useState<PortfolioProject[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<string>('all');
-  const [displayedProjects, setDisplayedProjects] = useState<Project[]>(projectsData);
+  const [displayedProjects, setDisplayedProjects] = useState<PortfolioProject[]>([]);
   
   const controls = useAnimation();
   const [ref, inView] = useInView({
@@ -76,21 +41,55 @@ export default function Projects() {
     threshold: 0.1,
   });
 
+  // Fetch all portfolio items
+  useEffect(() => {
+    const fetchProjects = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Assuming GET /api/portfolio-items returns all items
+        const response = await fetch('/api/portfolio-items'); 
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.details || errorData.error || 'Failed to fetch projects');
+        }
+        const data = await response.json();
+        const fetchedProjects: PortfolioProject[] = data.projects || [];
+        // Filter only relevant categories for this section and sort by order
+        const relevantProjects = fetchedProjects
+            .filter(p => RELEVANT_CATEGORIES.includes(p.category))
+            .sort((a, b) => a.order - b.order);
+           
+        setAllProjects(relevantProjects);
+        setDisplayedProjects(relevantProjects); // Initially display all relevant projects
+        setActiveFilter('all'); // Reset filter on new data fetch
+
+      } catch (err) {
+        console.error('Error fetching projects:', err);
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProjects();
+  }, []);
+
   // Handle animation start when component is in view
   useEffect(() => {
-    if (inView) {
+    if (inView && !loading) {
       controls.start('visible');
     }
-  }, [controls, inView]);
+  }, [controls, inView, loading]);
 
   // Filter projects when activeFilter changes
   const handleFilterChange = (filterName: string) => {
     setActiveFilter(filterName);
     
     if (filterName === 'all') {
-      setDisplayedProjects(projectsData);
+      setDisplayedProjects(allProjects);
     } else {
-      const filtered = projectsData.filter(project => project.category === filterName);
+      // Filter from the already relevant projects
+      const filtered = allProjects.filter(project => project.category.toUpperCase() === filterName.toUpperCase());
       setDisplayedProjects(filtered);
     }
   };
@@ -114,6 +113,12 @@ export default function Projects() {
     },
   };
 
+  // Get unique categories present in the fetched relevant projects
+  const availableCategories = [
+      'all', 
+      ...Array.from(new Set(allProjects.map(p => p.category.toLowerCase())))
+  ];
+
   return (
     <div className="container mx-auto px-6 py-20">
       <motion.div
@@ -123,96 +128,142 @@ export default function Projects() {
         variants={containerVariants}
       >
         <motion.div variants={itemVariants} className="text-center mb-16">
-          <h2 className="text-3xl font-bold mb-4">My <span className="text-sky-400">Projects</span></h2>
+          <h2 className="text-3xl font-bold mb-4 text-white">My <span className="text-sky-400">Projects</span></h2>
           <p className="text-slate-300 max-w-2xl mx-auto">
             Here are some of the projects I've worked on. Each project represents unique challenges and solutions.
           </p>
         </motion.div>
 
-        <motion.div variants={itemVariants} className="flex justify-center mb-10">
-          <div className="flex flex-wrap gap-2 justify-center">
-            {['all', 'frontend', 'backend', 'fullstack', 'mobile'].map((category) => (
-              <button
-                key={category}
-                onClick={() => handleFilterChange(category)}
-                className={`px-4 py-2 rounded-full text-sm transition-colors ${
-                  activeFilter === category
-                    ? 'bg-sky-500 text-white'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                {category.charAt(0).toUpperCase() + category.slice(1)}
-              </button>
-            ))}
-          </div>
-        </motion.div>
+        {/* Filter Buttons */}
+        {!loading && !error && allProjects.length > 0 && (
+             <motion.div variants={itemVariants} className="flex justify-center mb-10">
+                <div className="flex flex-wrap gap-2 justify-center">
+                    {availableCategories.map((category) => (
+                    <button
+                        key={category}
+                        onClick={() => handleFilterChange(category)}
+                        className={`px-4 py-2 rounded-full text-sm transition-colors ${
+                        activeFilter === category
+                            ? 'bg-sky-500 text-white'
+                            : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                        }`}
+                    >
+                        {category.charAt(0).toUpperCase() + category.slice(1)}
+                    </button>
+                    ))}
+                </div>
+            </motion.div>
+        )}
+      
+        {/* Loading State */}
+        {loading && (
+             <div className="text-center py-10">
+                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sky-500 mx-auto"></div>
+                 <p className="mt-4 text-slate-400">Loading Projects...</p>
+             </div>
+        )}
+       
+        {/* Error State */}
+        {!loading && error && (
+             <div className="text-center py-10 text-red-400">
+                Error loading projects: {error}
+             </div>
+        )}
 
-        {displayedProjects.length === 0 ? (
+        {/* No Projects State */}
+        {!loading && !error && allProjects.length === 0 && (
+             <motion.div 
+                variants={itemVariants}
+                className="text-center py-10"
+             >
+                <p className="text-slate-300">No projects available in relevant categories yet.</p>
+             </motion.div>
+        )}
+       
+        {/* No Filter Results State */} 
+        {!loading && !error && allProjects.length > 0 && displayedProjects.length === 0 && (
           <motion.div 
             variants={itemVariants}
             className="text-center py-10"
           >
-            <p className="text-slate-300">No projects found matching this filter.</p>
+            <p className="text-slate-300">No projects found matching the '{activeFilter}' filter.</p>
           </motion.div>
-        ) : (
+        )}
+
+        {/* Projects Grid */}
+        {!loading && !error && displayedProjects.length > 0 && (
           <motion.div 
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-            variants={containerVariants}
+            variants={containerVariants} // Apply stagger to grid itself
           >
             {displayedProjects.map((project) => (
               <motion.div
                 key={project.id}
-                className="bg-slate-800 rounded-xl overflow-hidden shadow-lg hover:shadow-sky-900/20 transition-shadow"
-                variants={itemVariants}
-                whileHover={{ y: -5 }}
+                className="bg-slate-800 rounded-xl overflow-hidden shadow-lg hover:shadow-sky-900/20 transition-shadow flex flex-col"
+                variants={itemVariants} // Apply variant to each item
                 layout
+                whileHover={{ y: -5 }}
               >
+                {/* Use Next/Image if imageUrl exists, otherwise show placeholder */}
                 <div className="h-48 bg-slate-700 relative">
-                  {/* This would be a project image */}
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800">
-                    <span className="text-3xl text-sky-400">{project.title.charAt(0)}</span>
-                  </div>
+                  {project.imageUrl ? (
+                    <Image
+                      src={project.imageUrl}
+                      alt={project.title}
+                      layout="fill"
+                      objectFit="cover"
+                      className="transition-opacity duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800">
+                      <span className="text-3xl text-sky-400">{project.title.charAt(0)}</span>
+                    </div>
+                  )}
                 </div>
                 
-                <div className="p-6">
-                  <h3 className="text-xl font-semibold mb-2">{project.title}</h3>
-                  <p className="text-slate-300 text-sm mb-4">{project.description}</p>
+                <div className="p-6 flex flex-col flex-grow">
+                  <h3 className="text-xl font-semibold mb-2 text-white">{project.title}</h3>
+                  <p className="text-slate-300 text-sm mb-4 flex-grow">{project.description}</p>
                   
-                  <div className="mb-4">
-                    <h4 className="text-sm font-semibold text-slate-300 mb-2">Technologies:</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {project.technologies.map((tech) => (
-                        <span key={tech} className="text-xs bg-slate-700 text-sky-300 px-2 py-1 rounded">
-                          {tech}
-                        </span>
-                      ))}
+                  {project.technologies && project.technologies.length > 0 && (
+                    <div className="mb-4">
+                        <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Technologies</h4>
+                        <div className="flex flex-wrap gap-2">
+                        {project.technologies.map((tech) => (
+                            <span key={tech} className="text-xs bg-slate-700 text-sky-300 px-2 py-1 rounded">
+                            {tech}
+                            </span>
+                        ))}
+                        </div>
                     </div>
-                  </div>
+                  )}
                   
-                  <div className="flex space-x-3">
-                    <a
-                      href={project.demoLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sky-400 hover:text-sky-300 text-sm flex items-center"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                      Live Demo
-                    </a>
-                    <a
-                      href={project.githubLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-slate-300 hover:text-white text-sm flex items-center"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                      </svg>
-                      GitHub
-                    </a>
+                  {/* Links */} 
+                  <div className="flex space-x-4 mt-auto pt-4 border-t border-slate-700/50">
+                    {project.demoUrl && (
+                        <a
+                            href={project.demoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sky-400 hover:text-sky-300 text-sm flex items-center transition-colors"
+                            >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                            Live Demo
+                        </a>
+                    )}
+                     {project.githubUrl && (
+                        <a
+                            href={project.githubUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-slate-400 hover:text-slate-300 text-sm flex items-center transition-colors"
+                            >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+                            </svg>
+                            GitHub
+                        </a>
+                    )}
                   </div>
                 </div>
               </motion.div>
