@@ -3,6 +3,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 interface Invoice {
   id: string;
@@ -32,6 +34,8 @@ interface PaymentMethod {
 }
 
 export default function BillingPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,23 +44,34 @@ export default function BillingPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    const fetchInvoices = async () => {
-      try {
-        const response = await fetch('/api/dashboard/customer/billing');
-        if (!response.ok) {
-          throw new Error('Failed to fetch invoices');
-        }
-        const data = await response.json();
-        setInvoices(data.invoices);
-      } catch (error) {
-        console.error('Error fetching invoices:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    // Redirect if not authenticated
+    if (status === 'unauthenticated') {
+      router.push('/auth/login');
+      return;
+    }
 
-    fetchInvoices();
-  }, []);
+    // Only fetch data if authenticated
+    if (status === 'authenticated') {
+      const fetchInvoices = async () => {
+        try {
+          const response = await fetch('/api/dashboard/customer/billing');
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to fetch invoices');
+          }
+          const data = await response.json();
+          setInvoices(data.invoices);
+        } catch (error) {
+          console.error('Error fetching invoices:', error);
+          setError(error instanceof Error ? error.message : 'Failed to fetch invoices');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchInvoices();
+    }
+  }, [status, router]);
 
   const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
